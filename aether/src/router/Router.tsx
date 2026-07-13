@@ -27,7 +27,7 @@ const Router = () => {
           <Route path="/pricing" element={<Pricing />} />
         </Route>
 
-        <Route >
+        <Route element={<ProtectedRoute />}/>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/chat" element={<RepositoryChat />} />
           <Route path="/reviews" element={<CodeReviews />} />
