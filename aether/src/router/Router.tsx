@@ -16,6 +16,7 @@ import ArchitectureGenerator from "../pages/ArchitectureGenerator";
 import DeploymentAgent from "../pages/DeploymentAgent";
 import VoiceEngineer from "../pages/VoiceEngineer";
 import TaskPlanner from "../pages/TaskPlanner";
+import Onboarding from "../pages/Onboarding";
 
 const Router = () => {
   return (
@@ -25,9 +26,11 @@ const Router = () => {
           <Route path="/auth" element={<AuthWrapper />} />
           <Route path="/" element={<Hero />} />
           <Route path="/pricing" element={<Pricing />} />
+           
         </Route>
 
-        <Route element={<ProtectedRoute />}>
+        <Route >
+          <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/chat" element={<RepositoryChat />} />
           <Route path="/reviews" element={<CodeReviews />} />

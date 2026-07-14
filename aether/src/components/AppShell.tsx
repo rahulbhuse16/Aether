@@ -1,3 +1,12 @@
+// Path: src/components/AppShell.tsx
+//
+// Shared authenticated-app layout — sidebar + topbar. Every app page
+// wraps its content in this:
+//
+//   export default function DashboardPage() {
+//     return <AppShell title="Dashboard"><DashboardContent /></AppShell>;
+//   }
+
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -11,7 +20,6 @@ import {
   ChevronsLeft,
   ChevronsRight,
   ChevronDown,
-  Bell,
   LogOut,
   ListTodo,
   Link2,
@@ -19,11 +27,13 @@ import {
   Layers,
   Rocket,
   AudioLines,
+  Plus,
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { setCurrentProject } from "../store/slices/projectsSlice";
 import { toggleSidebar } from "../store/slices/uiSlice";
 import { Logo } from "./Logo";
+import { Notifications } from "./Notifications";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -67,7 +77,7 @@ export function AppShell({
         className="relative flex flex-shrink-0 flex-col border-r border-white/[0.06] bg-[#0A0B0D]"
       >
         <div className="flex h-16 items-center gap-2.5 border-b border-white/[0.06] px-4">
-          <Logo size={50} />
+          <Logo size={26} />
           {!sidebarCollapsed && (
             <span className="text-[14px] font-medium tracking-tight text-[#F4F3EF]">
               Aether
@@ -75,6 +85,7 @@ export function AppShell({
           )}
         </div>
 
+        {/* Project switcher */}
         <div className="relative border-b border-white/[0.06] px-3 py-3">
           <button
             onClick={() => setProjectMenuOpen((v) => !v)}
@@ -114,10 +125,20 @@ export function AppShell({
                   <span className="text-[11px] text-[#55575F]">{p.repo}</span>
                 </button>
               ))}
+              <Link
+                to="/onboarding"
+                state={{ skipConnect: true }}
+                onClick={() => setProjectMenuOpen(false)}
+                className="flex w-full items-center gap-2 border-t border-white/[0.06] px-3 py-2.5 text-left text-[13px] text-[#94969E] transition-colors hover:bg-white/[0.04] hover:text-[#F4F3EF]"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add project
+              </Link>
             </div>
           )}
         </div>
 
+        {/* Nav */}
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
           {NAV_ITEMS.map((item) => {
             const active = pathname === item.href;
@@ -138,6 +159,7 @@ export function AppShell({
           })}
         </nav>
 
+        {/* User + collapse toggle */}
         <div className="border-t border-white/[0.06] p-3">
           {!sidebarCollapsed && (
             <div className="mb-2 flex items-center gap-2.5 rounded-lg px-2 py-2">
@@ -153,6 +175,7 @@ export function AppShell({
               </button>
             </div>
           )}
+
           <button
             onClick={() => dispatch(toggleSidebar())}
             className="flex w-full items-center justify-center rounded-lg py-1.5 text-[#55575F] hover:bg-white/[0.03] hover:text-[#94969E]"
@@ -167,6 +190,7 @@ export function AppShell({
         </div>
       </motion.aside>
 
+      {/* Main column */}
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-16 flex-shrink-0 items-center justify-between border-b border-white/[0.06] px-6">
           <h1 className="text-[16px] font-medium tracking-tight text-[#F4F3EF]">
@@ -184,9 +208,11 @@ export function AppShell({
               </div>
               <span className="font-mono text-[11px] text-[#94969E]">{budget.used}%</span>
             </div>
-            <button aria-label="Notifications" className="text-[#94969E] hover:text-[#F4F3EF]">
-              <Bell className="h-[18px] w-[18px]" />
-            </button>
+
+            {/* Self-contained: renders its own bell + unread badge + panel,
+                reads/writes notificationsSlice internally. Don't wrap it
+                in extra open/close state here — it manages that itself. */}
+            <Notifications />
           </div>
         </header>
 

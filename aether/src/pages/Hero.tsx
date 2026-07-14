@@ -135,13 +135,13 @@ function Navbar() {
             GitHub
           </a>
           <a
-            href="/signin"
+            href="/auth"
             className="text-[14px] text-[#94969E] transition-colors hover:text-[#F4F3EF]"
           >
             Sign in
           </a>
           <a
-            href="/signup"
+            href="/onboarding"
             className="group flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-[#8B7FE8] to-[#22A67D] px-4 py-2 text-[13px] font-medium text-[#0A0B0D] transition-all hover:brightness-[1.05]"
           >
             Get started
@@ -179,11 +179,11 @@ function Navbar() {
                 </a>
               ))}
               <div className="mt-2 flex flex-col gap-2 border-t border-white/[0.06] pt-4">
-                <a href="/signin" className="py-1 text-[14px] text-[#94969E]">
+                <a href="/auth" className="py-1 text-[14px] text-[#94969E]">
                   Sign in
                 </a>
                 <a
-                  href="/signup"
+                  href="/onboarding"
                   className="flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-[#8B7FE8] to-[#22A67D] py-2.5 text-[14px] font-medium text-[#0A0B0D]"
                 >
                   Get started

@@ -14,6 +14,7 @@ import bugsReducer from "./slices/bugsSlice";
 import architectureReducer from "./slices/architectureSlice";
 import voiceReducer from "./slices/voiceSlice";
 import integrationsReducer from "./slices/integrationsSlice";
+import notificationsReducer from './slices/notificationSlice'
 
 export const store = configureStore({
   reducer: {
@@ -32,6 +33,7 @@ export const store = configureStore({
     architecture: architectureReducer,
     voice: voiceReducer,
     integrations: integrationsReducer,
+    notifications: notificationsReducer
   },
 });
 
