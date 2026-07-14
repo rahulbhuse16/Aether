@@ -110,7 +110,7 @@ const getUserProjects = async (req, res) => {
             success: true,
             data: {
                 projects: projects.map((project) => ({
-                    id: project._id.toString(),
+                    id: project.githubRepoId.toString(),
                     name: project.name,
                     repo: project.repo,
                     openTasks: project.openTasks,
