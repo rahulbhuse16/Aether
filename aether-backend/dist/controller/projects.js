@@ -105,7 +105,7 @@ const getUserProjects = async (req, res) => {
         }
         const projects = await project_1.Project.find({ owner: userId })
             .sort({ githubUpdatedAt: -1 })
-            .select("_id name repo openTasks lastActivity");
+            .select("_id name repo openTasks lastActivity githubRepoId");
         res.status(200).json({
             success: true,
             data: {
