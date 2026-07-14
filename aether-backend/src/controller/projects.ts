@@ -1,6 +1,6 @@
-import { Project } from "@/models/project";
-import { User } from "@/models/user";
-import { formatTimeAgo } from "@/utils/helper";
+import { Project } from "../models/project";
+import { User } from "../models/user";
+import { formatTimeAgo } from "../utils/helper";
 import axios from "axios";
 import { Request, Response } from "express";
 

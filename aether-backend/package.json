@@ -4,7 +4,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "node dist/index.js",
     "dev": "nodemon --watch src -r tsconfig-paths/register --exec ts-node src/index.ts"
   },
   "keywords": [],
