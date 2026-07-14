@@ -25,6 +25,16 @@ googleProvider.setCustomParameters({
 /**
  * Login with Google (Popup)
  */
+
+import axios from "axios";
+
+export const syncFirebaseUser = async (payload:any) => {
+  const { data } = await axios.post("https://aether-api-y0ob.onrender.com/api/v1/auth/firebase", 
+    payload,
+  );
+
+  return data.data;
+};
 export const loginWithGoogle = async (): Promise<{
   success: boolean;
   user?: UserCredential["user"];
@@ -36,6 +46,24 @@ export const loginWithGoogle = async (): Promise<{
     const result = await signInWithPopup(auth, googleProvider);
 
     const credential = GoogleAuthProvider.credentialFromResult(result);
+
+
+    const payload={
+      uid : result.user.uid,
+      email : result.user.email,
+      name : result.user.displayName,
+      picture : result.user.photoURL,
+
+    }
+
+    const data=await syncFirebaseUser(payload)
+
+    localStorage.setItem("userId",data?.userId)
+    console.log(data)
+
+    
+
+    
 
     return {
       success: true,
@@ -119,6 +147,19 @@ export const loginWithEmail = async (
       password
     );
 
+    const payload={
+      uid : result.user.uid,
+      email : result.user.email,
+      name : result.user.displayName,
+      picture : result.user.photoURL,
+
+    }
+
+    const data=await syncFirebaseUser(payload)
+
+    localStorage.setItem("userId",data?.userId)
+    console.log(data)
+
     return {
       success: true,
       user: result.user,
@@ -156,6 +197,19 @@ export const signUpWithEmail = async (
     await updateProfile(result.user, {
       displayName: name,
     });
+
+    const payload={
+      uid : result.user.uid,
+      email : result.user.email,
+      name : result.user.displayName,
+      picture : result.user.photoURL,
+
+    }
+
+    const data=await syncFirebaseUser(payload)
+
+    localStorage.setItem("userId",data?.userId)
+    console.log(data)
 
     return {
       success: true,
