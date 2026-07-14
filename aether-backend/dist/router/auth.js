@@ -7,5 +7,5 @@ const auth_1 = require("../controller/auth");
 const express_1 = __importDefault(require("express"));
 const authRouter = express_1.default.Router();
 authRouter.post('/firebase', auth_1.firebaseLogin);
-authRouter.get('/user', auth_1.getUser);
+authRouter.get('/user/:id', auth_1.getUser);
 exports.default = authRouter;
