@@ -79,7 +79,6 @@ const UserSchema = new mongoose_1.Schema({
     githubAccessToken: {
         type: String,
         default: "",
-        select: false, // Hide token by default
     },
 }, {
     timestamps: true,

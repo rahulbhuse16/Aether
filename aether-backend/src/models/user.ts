@@ -69,7 +69,6 @@ const UserSchema = new Schema<IUser>(
     githubAccessToken: {
       type: String,
       default: "",
-      select: false, // Hide token by default
     },
   },
   {
