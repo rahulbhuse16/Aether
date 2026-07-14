@@ -2,6 +2,9 @@ export interface User {
   name: string;
   email: string;
   avatarUrl?: string;
+  githubToken?:string;
+  userId ?: string;
+  
 }
 
 export interface Project {

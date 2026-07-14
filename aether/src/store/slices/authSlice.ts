@@ -6,7 +6,7 @@ interface AuthState {
 }
 
 const initialState: AuthState = {
-  user: { name: "Rahul Verma", email: "rahul@aether.dev" },
+  user: { name: "Rahul Verma", email: "rahul@aether.dev",userId:"",avatarUrl:"" },
 };
 
 const authSlice = createSlice({
