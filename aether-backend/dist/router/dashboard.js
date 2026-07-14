@@ -3,9 +3,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const auth_1 = require("../controller/auth");
+const dashboard_1 = require("../controller/dashboard");
 const express_1 = __importDefault(require("express"));
-const authRouter = express_1.default.Router();
-authRouter.post('/firebase', auth_1.firebaseLogin);
-authRouter.post('/user', auth_1.getUser);
-exports.default = authRouter;
+const dashBoardRouter = express_1.default.Router();
+dashBoardRouter.post('/daily-digest', dashboard_1.getDailyDigest);
+exports.default = dashBoardRouter;

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.firebaseLogin = void 0;
+exports.getUser = exports.firebaseLogin = void 0;
 const user_1 = require("../models/user");
 const firebaseLogin = async (req, res) => {
     try {
@@ -46,3 +46,27 @@ const firebaseLogin = async (req, res) => {
     }
 };
 exports.firebaseLogin = firebaseLogin;
+const getUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            res.status(400).json({
+                success: false,
+                message: "id is required.",
+            });
+            return;
+        }
+        const user = await user_1.User.findById(id);
+        res.status(200).json({
+            user: user
+        });
+    }
+    catch (err) {
+        console.error(err);
+        res.status(401).json({
+            success: false,
+            message: err?.message ?? "Failed to fetch user",
+        });
+    }
+};
+exports.getUser = getUser;

@@ -72,7 +72,7 @@ const connectGithubAccount = async (req, res) => {
             message: "GitHub connected successfully.",
             data: {
                 projects: projects.map((project) => ({
-                    id: project._id,
+                    id: project.githubRepoId,
                     name: project.name,
                     repo: project.repo,
                     openTasks: project.openTasks,
