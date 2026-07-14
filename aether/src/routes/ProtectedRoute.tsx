@@ -5,7 +5,10 @@ const ProtectedRoute = () => {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
 
-  if (!isAuthenticated) {
+
+
+
+  if (!isAuthenticated ) {
     return (
       <Navigate
         to="/auth"

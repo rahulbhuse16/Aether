@@ -2,7 +2,9 @@ import { auth } from "../firebase/config";
 
 
 const useAuth = () => {
-  const isAuthenticated = auth.currentUser ? true : false;
+    const userId=localStorage.getItem('userId')
+
+  const isAuthenticated = (auth.currentUser || userId) ? true : false;
 
 
   

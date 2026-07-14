@@ -36,6 +36,7 @@ import {
 import { FaGithub, FaGoogle } from "react-icons/fa";
 import { loginWithEmail, loginWithGoogle, resetPassword, signUpWithEmail } from "../services/auth";
 import { connectGithub } from "../services/github";
+import { useNavigate } from "react-router";
 
 type Mode = "signin" | "signup";
 
@@ -180,6 +181,8 @@ export default function AuthPage() {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const navigate=useNavigate()
+
 
     const isSignUp = mode === "signup";
 
@@ -219,6 +222,8 @@ export default function AuthPage() {
         try {
             setGithubLoading(true);
             await connectGithub();
+            navigate('/dashboard')
+
         } catch (err) {
             setError(err instanceof Error ? err.message : "GitHub sign-in failed. Try again.");
         } finally {
@@ -231,6 +236,7 @@ export default function AuthPage() {
         try {
             setGoogleLoading(true);
             await loginWithGoogle();
+            navigate('/dashboard')
         } catch (err) {
             setError(err instanceof Error ? err.message : "GitHub sign-in failed. Try again.");
         } finally {

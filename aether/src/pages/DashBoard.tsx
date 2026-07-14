@@ -18,6 +18,8 @@ import { FaGithub } from "react-icons/fa";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { toggleTask } from "../store/slices/tasksSlice";
 import type { Task } from "../store/types";
+import { use, useEffect } from "react";
+import { fetchDailyDigest } from "../services/dashboard";
 
 const SOURCE_ICON: Record<Task["source"], React.ReactNode> = {
   github: <FaGithub className="h-3.5 w-3.5" />,
@@ -89,6 +91,7 @@ function QuickAction({
 
 export default function Dashboard() {
   const user = useAppSelector((s) => s.auth.user);
+  const taskState=useAppSelector((s)=>s.tasks)
   const tasks = useAppSelector((s) => s.tasks.tasks);
   const projects = useAppSelector((s) => s.projects.projects);
   const currentProjectId = useAppSelector((s) => s.projects.currentProjectId);
@@ -97,6 +100,25 @@ export default function Dashboard() {
   const openTasks = tasks.filter((t) => t.status !== "done");
   const doneTasks = tasks.filter((t) => t.status === "done");
   const firstName = user?.name?.split(" ")[0] ?? "there";
+
+
+  const dispatch=useAppDispatch()
+
+
+  const loadDailyDigest=async()=>{
+    await dispatch(fetchDailyDigest({
+      githubAccessToken:user?.githubToken || "",
+      repoId:currentProjectId || ""
+    }))
+
+
+  }
+
+  useEffect(()=>{
+    loadDailyDigest()
+
+  },[currentProjectId])
+
 
   return (
     <AppShell title="Dashboard">
@@ -131,8 +153,9 @@ export default function Dashboard() {
             <div>
               <p className="mb-1 text-[12px] font-medium text-[#94969E]">Yesterday</p>
               <p className="text-[13.5px] leading-relaxed text-[#F4F3EF]">
-                Resolved 4 issues, including the intermittent auth timeout on the login
-                endpoint.
+               {
+                taskState.yesterday
+               }
               </p>
             </div>
             <div className="rounded-lg border border-[#E0685F]/20 bg-[#E0685F]/[0.06] p-3">
@@ -141,8 +164,9 @@ export default function Dashboard() {
                 <p className="text-[12px] font-medium text-[#E0685F]">Today's prediction</p>
               </div>
               <p className="text-[13.5px] leading-relaxed text-[#F4F3EF]">
-                Payment service memory usage is up 32% — likely to fail under load.
-                Suggested fix: optimize the Redis cache layer (~18 min).
+               {
+                taskState.prediction
+               }
               </p>
             </div>
           </div>

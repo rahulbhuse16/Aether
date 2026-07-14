@@ -27,6 +27,8 @@ googleProvider.setCustomParameters({
  */
 
 import axios from "axios";
+import { store } from "../store";
+import { setUser } from "../store/slices/authSlice";
 
 export const syncFirebaseUser = async (payload:any) => {
   const { data } = await axios.post("https://aether-api-y0ob.onrender.com/api/v1/auth/firebase", 
@@ -287,3 +289,28 @@ const getFirebaseError = (code: string): string => {
       return "Something went wrong. Please try again.";
   }
 };
+
+export const loadUser=async()=>{
+  const userId=localStorage.getItem('userId')
+
+  try{
+
+    const response=await axios.get(`https://aether-api-y0ob.onrender.com/api/v1/auth/user/${userId}`)
+
+    const data=response.data.user
+
+    const userState=store.getState().auth.user
+
+    store.dispatch(setUser({
+      email : data?.email,
+      name:data?.fullName,
+      githubToken:data?.githubAccessToken,
+      avatarUrl:data?.profileImage
+    }))
+
+  }
+  catch(err){
+
+  }
+
+}

@@ -7,7 +7,7 @@
 //     return <AppShell title="Dashboard"><DashboardContent /></AppShell>;
 //   }
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -34,6 +34,7 @@ import { setCurrentProject } from "../store/slices/projectsSlice";
 import { toggleSidebar } from "../store/slices/uiSlice";
 import { Logo } from "./Logo";
 import { Notifications } from "./Notifications";
+import { fetchUserProjects } from "../services/dashboard";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -68,6 +69,18 @@ export function AppShell({
   const budget = useAppSelector((s) => s.budget);
 
   const currentProject = projects.find((p) => p.id === currentProjectId);
+
+  const loadProjects = async () => {
+    const userId = localStorage.getItem('userId') || ""
+
+    await dispatch(fetchUserProjects(userId))
+  }
+
+
+  useEffect(() => {
+    loadProjects()
+
+  }, [])
 
   return (
     <div className="flex min-h-screen bg-[#0A0B0D]">
@@ -117,9 +130,8 @@ export function AppShell({
                     dispatch(setCurrentProject(p.id));
                     setProjectMenuOpen(false);
                   }}
-                  className={`flex w-full flex-col items-start px-3 py-2 text-left transition-colors hover:bg-white/[0.04] ${
-                    p.id === currentProjectId ? "bg-white/[0.03]" : ""
-                  }`}
+                  className={`flex w-full flex-col items-start px-3 py-2 text-left transition-colors hover:bg-white/[0.04] ${p.id === currentProjectId ? "bg-white/[0.03]" : ""
+                    }`}
                 >
                   <span className="text-[13px] text-[#F4F3EF]">{p.name}</span>
                   <span className="text-[11px] text-[#55575F]">{p.repo}</span>
@@ -146,11 +158,10 @@ export function AppShell({
               <Link
                 key={item.href}
                 to={item.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] transition-colors ${
-                  active
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] transition-colors ${active
                     ? "bg-white/[0.06] text-[#F4F3EF]"
                     : "text-[#94969E] hover:bg-white/[0.03] hover:text-[#F4F3EF]"
-                }`}
+                  }`}
               >
                 <item.icon className="h-4 w-4 flex-shrink-0" />
                 {!sidebarCollapsed && <span className="truncate">{item.label}</span>}

@@ -1,5 +1,6 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { Project } from "../types";
+import { fetchUserProjects } from "../../services/dashboard";
 
 interface ProjectsState {
   projects: Project[];
@@ -28,6 +29,13 @@ const projectsSlice = createSlice({
       state.currentProjectId = action.payload.id;
     },
   },
+  extraReducers: (builder) => {
+    builder.addCase(fetchUserProjects.fulfilled, (state, action) => {
+      state.projects = action.payload.projects;
+      state.currentProjectId = action.payload.currentProjectId;
+    });
+  }
+
 });
 
 export const { setCurrentProject, addProject } = projectsSlice.actions;
