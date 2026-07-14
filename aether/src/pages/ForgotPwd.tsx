@@ -24,20 +24,14 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-    Eye,
-    EyeOff,
     Mail,
-    Lock,
-    User,
     Loader2,
     ChevronRightCircle,
 
 } from "lucide-react";
-import { FaGithub, FaGoogle } from "react-icons/fa";
-import { loginWithEmail, loginWithGoogle, resetPassword, signUpWithEmail } from "../services/auth";
-import { connectGithub } from "../services/github";
+import { resetPassword } from "../services/auth";
+import { useNavigate } from "react-router-dom";
 
-type Mode = "signin" | "signup";
 
 
 
@@ -169,44 +163,31 @@ function Field({
 /* Main component                                                    */
 /* ---------------------------------------------------------------- */
 
-export default function AuthPage() {
-    const [mode, setMode] = useState<Mode>("signin");
-    const [showPassword, setShowPassword] = useState(false);
+export default function ForgotPwd() {
     const [loading, setLoading] = useState(false);
-    const [githubLoading, setGithubLoading] = useState(false);
-    const [googleLoading, setGoogleLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const [name, setName] = useState("");
     const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
 
-    const isSignUp = mode === "signup";
+    const navigate=useNavigate()
+
+
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         setError(null);
 
-        if (isSignUp && name.trim().length < 2) {
-            setError("Enter your full name.");
-            return;
-        }
+       
         if (!email.includes("@")) {
             setError("Enter a valid email address.");
             return;
         }
-        if (password.length < 8) {
-            setError("Password must be at least 8 characters.");
-            return;
-        }
+       
 
         try {
             setLoading(true);
-            if (isSignUp) {
-                await signUpWithEmail?.(name, email, password);
-            } else {
-                await loginWithEmail?.(email, password);
-            }
+            await resetPassword(email)
+            navigate("/auth")
         } catch (err) {
             setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
         } finally {
@@ -214,144 +195,48 @@ export default function AuthPage() {
         }
     }
 
-    async function handleGithub() {
-        setError(null);
-        try {
-            setGithubLoading(true);
-            await connectGithub();
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "GitHub sign-in failed. Try again.");
-        } finally {
-            setGithubLoading(false);
-        }
-    }
+    
 
-    async function handleGoogle() {
-        setError(null);
-        try {
-            setGoogleLoading(true);
-            await loginWithGoogle();
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "GitHub sign-in failed. Try again.");
-        } finally {
-            setGoogleLoading(false);
-        }
-    }
-
-    const handleResetPwd=async()=>{
-        await resetPassword(email);
-
-    }
+    
 
     return (
-        <div className="flex min-h-screen flex-col bg-[#0A0B0D] lg:flex-row">
-            <div className="hidden lg:block lg:w-1/2">
-                <BrandPanel />
-            </div>
-            <div className="relative flex w-full items-center justify-center overflow-hidden px-6 py-16 lg:w-1/2">
-                <div
-                    className="pointer-events-none absolute inset-0 opacity-[0.4] lg:opacity-[0.6]"
-                    style={{
-                        background:
-                            "radial-gradient(circle at 50% 0%, rgba(139,127,232,0.10) 0%, transparent 55%)",
-                    }}
-                />
-
-                <div className="relative z-10 w-full max-w-[380px]">
-                    <div className="mb-7 flex flex-col items-center gap-2.5 lg:hidden">
-                        <AetherMark size={34} />
-                        <span className="text-sm font-medium tracking-tight text-[#F4F3EF]">
-                            Aether
-                        </span>
-                    </div>
-
+        <div className="flex min-h-screen flex-col items-center justify-center bg-[#0A0B0D] p-6">
+            <div
+                className="pointer-events-none absolute inset-0 opacity-[0.4] lg:opacity-[0.6]"
+                style={{
+                    background:
+                        "radial-gradient(circle at 50% 0%, rgba(139,127,232,0.10) 0%, transparent 55%)",
+                }}
+            />
+            <div className="relative z-10 w-full max-w-[380px]">
+              
+                <div>
                     <div className="relative rounded-2xl bg-gradient-to-br from-[#8B7FE8]/25 via-white/[0.06] to-[#22A67D]/25 p-px shadow-2xl shadow-black/50">
                         <div className="rounded-[15px] bg-[#101215]/95 px-7 py-8 backdrop-blur-xl sm:px-9 sm:py-9">
                             <div className="mb-4 hidden flex-col items-center gap-2.5 lg:flex">
-                                <img
-                                    src="/aether_logo.svg"
-                                    alt="Aether Logo"
-                                    className="w-[10vw]  h-auto object-contain drop-shadow-2xl self-center"
-
-                                />
+                                  <HeroMark />
                             </div>
 
                             <div className="mb-6 text-center">
                                 <h2 className="text-[19px] font-medium tracking-tight text-[#F4F3EF]">
-                                    {isSignUp ? "Create an account" : "Welcome back"}
+                                    {"Forgot Password"}
                                 </h2>
                                 <p className="mt-1.5 text-sm text-[#75777E]">
-                                    {isSignUp
-                                        ? "Set up your engineering workspace."
-                                        : "Sign in to your workspace."}
+                                    {
+                                        "Send reset password link on your email"
+                                       }
                                 </p>
                             </div>
 
-                            <div className="mb-6 flex rounded-xl border border-white/[0.08] bg-white/[0.02] p-1">
-                                {(["signin", "signup"] as Mode[]).map((m) => (
-                                    <button
-                                        key={m}
-                                        type="button"
-                                        onClick={() => {
-                                            setMode(m);
-                                            setError(null);
-                                        }}
-                                        className={`relative flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${mode === m ? "text-[#0A0B0D]" : "text-[#94969E] hover:text-[#F4F3EF]"
-                                            }`}
-                                    >
-                                        {mode === m && (
-                                            <motion.span
-                                                layoutId="authTab"
-                                                className="absolute inset-0 rounded-lg bg-[#F4F3EF]"
-                                                transition={{ type: "spring", duration: 0.4, bounce: 0.2 }}
-                                            />
-                                        )}
-                                        <span className="relative z-10">
-                                            {m === "signin" ? "Sign In" : "Create Account"}
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
+                          
 
-                            <button
-                                type="button"
-                                onClick={handleGoogle}
-                                disabled={googleLoading}
-                                className="cursor-pointer mb-5 flex w-full items-center justify-center gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] py-2.5 text-sm font-medium text-[#F4F3EF] transition-all hover:border-white/[0.16] hover:bg-white/[0.05] disabled:opacity-60"
-                            >
-                                {googleLoading ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                    <FaGoogle className="h-4 w-4" />
-                                )}
-                                Continue with Google
-                            </button>
+                          
+                           
 
-                            <button
-                                type="button"
-                                onClick={handleGithub}
-                                disabled={githubLoading}
-                                className="cursor-pointer mb-5 flex w-full items-center justify-center gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] py-2.5 text-sm font-medium text-[#F4F3EF] transition-all hover:border-white/[0.16] hover:bg-white/[0.05] disabled:opacity-60"
-                            >
-                                {githubLoading ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                    <FaGithub className="h-4 w-4" />
-                                )}
-                                Continue with Github
-                            </button>
-
-                            <div className="mb-5 flex items-center gap-3">
-                                <span className="h-px flex-1 bg-white/[0.08]" />
-                                <span className="text-[11px] uppercase tracking-wide text-[#55575F]">
-                                    or
-                                </span>
-                                <span className="h-px flex-1 bg-white/[0.08]" />
-                            </div>
+                           
 
                             <AnimatePresence mode="wait">
                                 <motion.form
-                                    key={mode}
                                     onSubmit={handleSubmit}
                                     initial={{ opacity: 0, y: 6 }}
                                     animate={{ opacity: 1, y: 0 }}
@@ -359,17 +244,7 @@ export default function AuthPage() {
                                     transition={{ duration: 0.18 }}
                                     className="space-y-3"
                                 >
-                                    {isSignUp && (
-                                        <Field
-                                            icon={User}
-                                            type="text"
-                                            placeholder="Full name"
-                                            value={name}
-                                            onChange={(e) => setName(e.target.value)}
-                                            autoComplete="name"
-                                            required
-                                        />
-                                    )}
+                                    
 
                                     <Field
                                         icon={Mail}
@@ -381,35 +256,11 @@ export default function AuthPage() {
                                         required
                                     />
 
-                                    <div className="relative">
-                                        <Field
-                                            icon={Lock}
-                                            type={showPassword ? "text" : "password"}
-                                            placeholder="Password"
-                                            value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
-                                            autoComplete={isSignUp ? "new-password" : "current-password"}
-                                            required
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPassword((v) => !v)}
-                                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#55575F] transition-colors hover:text-[#94969E]"
-                                            aria-label={showPassword ? "Hide password" : "Show password"}
-                                        >
-                                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                        </button>
-                                    </div>
+                                    
 
                                     {error && <p className="text-sm text-[#E0685F]">{error}</p>}
 
-                                    {!isSignUp && (
-                                        <div className="pt-1 flex justify-end cursor-pointer">
-                                            <a href="/forgot-pwd"  className="text-[13px] text-[#94969E] transition-colors hover:text-[#F4F3EF] cursor-pointer">
-                                                Forgot password?
-                                            </a>
-                                        </div>
-                                    )}
+                                    
 
                                     <button
                                         type="submit"
@@ -420,7 +271,7 @@ export default function AuthPage() {
                                             <Loader2 className="h-4 w-4 animate-spin" />
                                         ) : (
                                             <>
-                                                {isSignUp ? "Create Account" : "Sign In"}
+                                                {"Continue"}
                                                 <ChevronRightCircle className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                                             </>
                                         )}
@@ -431,8 +282,6 @@ export default function AuthPage() {
                             </AnimatePresence>
                         </div>
                     </div>
-
-
                 </div>
             </div>
         </div>

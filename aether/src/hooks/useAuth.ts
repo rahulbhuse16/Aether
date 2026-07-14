@@ -1,11 +1,8 @@
-import { useMemo } from "react";
+import { auth } from "../firebase/config";
 
-const TOKEN_KEY = "accessToken";
 
 const useAuth = () => {
-  const isAuthenticated = useMemo(() => {
-    return !!localStorage.getItem(TOKEN_KEY);
-  }, []);
+  const isAuthenticated = auth.currentUser ? true : false;
 
   return {
     isAuthenticated,

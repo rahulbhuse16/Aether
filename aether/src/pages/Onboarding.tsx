@@ -14,6 +14,7 @@ import { Logo } from "../components/Logo";
 import { useAppDispatch } from "../store/hooks";
 import { addProject } from "../store/slices/projectsSlice";
 import { AmbientBackground } from "../components/AmbientBackGround";
+import { connectGithub } from "../services/github";
 
 type Step = 1 | 2 | 3;
 
@@ -60,12 +61,26 @@ function StepIndicator({ step }: { step: Step }) {
 function ConnectStep({ onConnected }: { onConnected: () => void }) {
   const [loading, setLoading] = useState(false);
 
-  function handleConnect() {
+ async function handleConnect() {
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      onConnected();
-    }, 900);
+    try{
+
+        await connectGithub()
+        onConnected()
+        setLoading(false)
+
+
+    }
+    catch(err){
+        setLoading(false)
+
+
+    }
+    finally{
+        setLoading(false)
+
+    }
+    
   }
 
   return (

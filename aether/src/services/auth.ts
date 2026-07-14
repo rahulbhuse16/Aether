@@ -1,0 +1,235 @@
+import {
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+ type UserCredential,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  updateProfile,
+} from "firebase/auth";
+import { auth } from "../firebase/config";
+
+const googleProvider = new GoogleAuthProvider();
+
+// Optional scopes
+googleProvider.addScope("email");
+googleProvider.addScope("profile");
+
+// Always ask user to choose an account
+googleProvider.setCustomParameters({
+  prompt: "select_account",
+});
+
+/**
+ * Login with Google (Popup)
+ */
+export const loginWithGoogle = async (): Promise<{
+  success: boolean;
+  user?: UserCredential["user"];
+  accessToken?: string;
+  idToken?: string;
+  error?: string;
+}> => {
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+
+    return {
+      success: true,
+      user: result.user,
+      accessToken: credential?.accessToken,
+      idToken: await result.user.getIdToken(),
+    };
+  } catch (error: any) {
+    console.error("Google Login Error:", error);
+
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+};
+
+/**
+ * Login with Google (Redirect)
+ */
+export const loginWithGoogleRedirect = async () => {
+  await signInWithRedirect(auth, googleProvider);
+};
+
+/**
+ * Get Redirect Result
+ */
+export const getGoogleRedirectResult = async (): Promise<{
+  success: boolean;
+  user?: UserCredential["user"];
+  accessToken?: string;
+  idToken?: string;
+  error?: string;
+}> => {
+  try {
+    const result = await getRedirectResult(auth);
+
+    if (!result) {
+      return {
+        success: false,
+        error: "No redirect result found.",
+      };
+    }
+
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+
+    return {
+      success: true,
+      user: result.user,
+      accessToken: credential?.accessToken,
+      idToken: await result.user.getIdToken(),
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+};
+
+
+
+
+
+/**
+ * Login with Email & Password
+ */
+export const loginWithEmail = async (
+  email: string,
+  password: string
+): Promise<{
+  success: boolean;
+  user?: UserCredential["user"];
+  idToken?: string;
+  error?: string;
+}> => {
+  try {
+    const result = await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+
+    return {
+      success: true,
+      user: result.user,
+      idToken: await result.user.getIdToken(),
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: getFirebaseError(error.code),
+    };
+  }
+};
+
+/**
+ * Register with Email & Password
+ */
+export const signUpWithEmail = async (
+  name: string,
+  email: string,
+  password: string
+): Promise<{
+  success: boolean;
+  user?: UserCredential["user"];
+  idToken?: string;
+  error?: string;
+}> => {
+  try {
+    const result = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+
+    // Save display name
+    await updateProfile(result.user, {
+      displayName: name,
+    });
+
+    return {
+      success: true,
+      user: result.user,
+      idToken: await result.user.getIdToken(),
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: getFirebaseError(error.code),
+    };
+  }
+};
+
+/**
+ * Send Password Reset Email
+ */
+export const resetPassword = async (
+  email: string
+): Promise<{
+  success: boolean;
+  message?: string;
+  error?: string;
+}> => {
+  try {
+    await sendPasswordResetEmail(auth, email);
+
+    return {
+      success: true,
+      message:
+        "Password reset email sent successfully. Please check your inbox.",
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: getFirebaseError(error.code),
+    };
+  }
+};
+
+/**
+ * Firebase Error Messages
+ */
+const getFirebaseError = (code: string): string => {
+  switch (code) {
+    case "auth/invalid-email":
+      return "Invalid email address.";
+
+    case "auth/user-disabled":
+      return "This account has been disabled.";
+
+    case "auth/user-not-found":
+      return "No account found with this email.";
+
+    case "auth/wrong-password":
+    case "auth/invalid-credential":
+      return "Incorrect email or password.";
+
+    case "auth/email-already-in-use":
+      return "An account already exists with this email.";
+
+    case "auth/weak-password":
+      return "Password should be at least 6 characters.";
+
+    case "auth/missing-password":
+      return "Password is required.";
+
+    case "auth/too-many-requests":
+      return "Too many attempts. Please try again later.";
+
+    case "auth/network-request-failed":
+      return "Network error. Check your internet connection.";
+
+    default:
+      return "Something went wrong. Please try again.";
+  }
+};

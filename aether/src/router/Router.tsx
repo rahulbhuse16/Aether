@@ -17,6 +17,7 @@ import DeploymentAgent from "../pages/DeploymentAgent";
 import VoiceEngineer from "../pages/VoiceEngineer";
 import TaskPlanner from "../pages/TaskPlanner";
 import Onboarding from "../pages/Onboarding";
+import ForgotPwd from "../pages/ForgotPwd";
 
 const Router = () => {
   return (
@@ -26,10 +27,11 @@ const Router = () => {
           <Route path="/auth" element={<AuthWrapper />} />
           <Route path="/" element={<Hero />} />
           <Route path="/pricing" element={<Pricing />} />
+           <Route path="/forgot-pwd" element={<ForgotPwd />} />
            
         </Route>
 
-        <Route >
+        <Route element={<ProtectedRoute />} >
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/chat" element={<RepositoryChat />} />
