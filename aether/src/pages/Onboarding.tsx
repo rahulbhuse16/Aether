@@ -15,6 +15,7 @@ import { useAppDispatch } from "../store/hooks";
 import { addProject } from "../store/slices/projectsSlice";
 import { AmbientBackground } from "../components/AmbientBackGround";
 import { connectGithub } from "../services/github";
+import { loadUser } from "../services/auth";
 
 type Step = 1 | 2 | 3;
 
@@ -70,6 +71,7 @@ function ConnectStep({ onConnected }: { onConnected: () => void }) {
 
         window.location.href = `https://aether-api-y0ob.onrender.com/api/v1/github/connect?state=${userId}`;
         onConnected()
+        await loadUser()
         setLoading(false)
 
 
@@ -240,7 +242,7 @@ export default function Onboarding() {
     (location.state as { skipConnect?: boolean } | null)?.skipConnect
   );
 
-  const [step, setStep] = useState<Step>(skipConnect ? 2 : 1);
+  const [step, setStep] = useState<Step>(1);
   const [selectedRepo, setSelectedRepo] = useState<(typeof MOCK_REPOS)[number] | null>(null);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();

@@ -20,6 +20,7 @@ import { toggleTask } from "../store/slices/tasksSlice";
 import type { Task } from "../store/types";
 import { use, useEffect } from "react";
 import { fetchDailyDigest } from "../services/dashboard";
+import { loadUser } from "../services/auth";
 
 const SOURCE_ICON: Record<Task["source"], React.ReactNode> = {
   github: <FaGithub className="h-3.5 w-3.5" />,
@@ -113,6 +114,11 @@ export default function Dashboard() {
 
 
   }
+
+
+  useEffect(()=>{
+    loadUser()
+  },[])
 
   useEffect(()=>{
     loadDailyDigest()
