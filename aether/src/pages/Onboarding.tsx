@@ -6,12 +6,12 @@
 // The result (the new project) is dispatched to the store once, at the end.
 
 import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { FaGithub } from "react-icons/fa";
 import { Check, ChevronRight, Loader2 } from "lucide-react";
 import { Logo } from "../components/Logo";
-import { useAppDispatch } from "../store/hooks";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { addProject } from "../store/slices/projectsSlice";
 import { AmbientBackground } from "../components/AmbientBackGround";
 import { connectGithub } from "../services/github";
@@ -237,12 +237,17 @@ function IndexingStep({
 }
 
 export default function Onboarding() {
-  const location = useLocation();
-  const skipConnect = Boolean(
-    (location.state as { skipConnect?: boolean } | null)?.skipConnect
-  );
+  
 
-  const [step, setStep] = useState<Step>(1);
+  const [searchParams] = useSearchParams();
+
+  const authState=useAppSelector(state=>state.auth.user)
+
+  const success = searchParams.get("success");
+
+  const initialStep=(success==='true' || authState?.githubToken) ? 2 : 1
+
+  const [step, setStep] = useState<Step>(initialStep);
   const [selectedRepo, setSelectedRepo] = useState<(typeof MOCK_REPOS)[number] | null>(null);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
