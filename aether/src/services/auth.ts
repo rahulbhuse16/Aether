@@ -9,6 +9,7 @@ import {
   sendPasswordResetEmail,
   updateProfile,
   GithubAuthProvider,
+  signOut,
 } from "firebase/auth";
 import { auth } from "../firebase/config";
 
@@ -380,4 +381,9 @@ export const loadUser = async () => {
 
   }
 
+}
+
+export const logOut = async () => {
+  await signOut(auth)
+  localStorage.clear()
 }

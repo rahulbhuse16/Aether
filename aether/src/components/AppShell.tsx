@@ -8,7 +8,7 @@
 //   }
 
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
@@ -35,6 +35,7 @@ import { toggleSidebar } from "../store/slices/uiSlice";
 import { Logo } from "./Logo";
 import { Notifications } from "./Notifications";
 import { fetchUserProjects } from "../services/dashboard";
+import { logOut } from "../services/auth";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -60,6 +61,7 @@ export function AppShell({
 }) {
   const pathname = useLocation().pathname;
   const dispatch = useAppDispatch();
+  const navigate=useNavigate()
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
 
   const user = useAppSelector((s) => s.auth.user);
@@ -81,6 +83,13 @@ export function AppShell({
     loadProjects()
 
   }, [])
+
+
+  const handleLogout=async()=>{
+    await logOut()
+    navigate("/auth")
+
+  }
 
   return (
     <div className="flex min-h-screen bg-[#0A0B0D]">
@@ -181,7 +190,7 @@ export function AppShell({
                 <p className="truncate text-[13px] text-[#F4F3EF]">{user?.name}</p>
                 <p className="truncate text-[11px] text-[#55575F]">{user?.email}</p>
               </div>
-              <button aria-label="Sign out" className="text-[#55575F] hover:text-[#F4F3EF]">
+              <button onClick={handleLogout} aria-label="Sign out" className="text-[#55575F] hover:text-[#F4F3EF]">
                 <LogOut className="h-4 w-4" />
               </button>
             </div>
