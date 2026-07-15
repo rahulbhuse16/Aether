@@ -32,7 +32,6 @@ const projectsSlice = createSlice({
   extraReducers: (builder) => {
     builder.addCase(fetchUserProjects.fulfilled, (state, action) => {
       state.projects = action.payload.projects;
-      state.currentProjectId = action.payload.currentProjectId;
     });
   }
 

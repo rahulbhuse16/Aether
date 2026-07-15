@@ -65,7 +65,10 @@ function ConnectStep({ onConnected }: { onConnected: () => void }) {
     setLoading(true);
     try{
 
-        await connectGithub()
+        //await connectGithub()
+        const userId=localStorage.getItem("userId") as string
+
+        window.location.href = `https://aether-api-y0ob.onrender.com/api/v1/github/connect?state=${userId}`;
         onConnected()
         setLoading(false)
 

@@ -34,8 +34,7 @@ import {
 
 } from "lucide-react";
 import { FaGithub, FaGoogle } from "react-icons/fa";
-import { loginWithEmail, loginWithGoogle, resetPassword, signUpWithEmail } from "../services/auth";
-import { connectGithub } from "../services/github";
+import { loginWithEmail, loginWithGithub, loginWithGoogle, resetPassword, signUpWithEmail } from "../services/auth";
 import { useNavigate } from "react-router";
 
 type Mode = "signin" | "signup";
@@ -221,7 +220,7 @@ export default function AuthPage() {
         setError(null);
         try {
             setGithubLoading(true);
-            await connectGithub();
+            await loginWithGithub();
             navigate('/dashboard')
 
         } catch (err) {

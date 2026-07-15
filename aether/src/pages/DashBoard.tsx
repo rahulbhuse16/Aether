@@ -51,9 +51,8 @@ function TaskRow({ task }: { task: Task }) {
         <span className={`h-2 w-2 flex-shrink-0 rounded-full ${PRIORITY_DOT[task.priority]}`} />
       )}
       <span
-        className={`flex-1 text-[13.5px] ${
-          done ? "text-[#55575F] line-through" : "text-[#F4F3EF]"
-        }`}
+        className={`flex-1 text-[13.5px] ${done ? "text-[#55575F] line-through" : "text-[#F4F3EF]"
+          }`}
       >
         {task.title}
       </span>
@@ -91,7 +90,7 @@ function QuickAction({
 
 export default function Dashboard() {
   const user = useAppSelector((s) => s.auth.user);
-  const taskState=useAppSelector((s)=>s.tasks)
+  const taskState = useAppSelector((s) => s.tasks)
   const tasks = useAppSelector((s) => s.tasks.tasks);
   const projects = useAppSelector((s) => s.projects.projects);
   const currentProjectId = useAppSelector((s) => s.projects.currentProjectId);
@@ -102,22 +101,22 @@ export default function Dashboard() {
   const firstName = user?.name?.split(" ")[0] ?? "there";
 
 
-  const dispatch=useAppDispatch()
+  const dispatch = useAppDispatch()
 
 
-  const loadDailyDigest=async()=>{
+  const loadDailyDigest = async () => {
     await dispatch(fetchDailyDigest({
-      githubAccessToken:user?.githubToken || "",
-      repoId:currentProjectId || ""
+      githubAccessToken: user?.githubToken || "",
+      repoId: currentProjectId || ""
     }))
 
 
   }
 
-  useEffect(()=>{
+  useEffect(() => {
     loadDailyDigest()
 
-  },[currentProjectId])
+  }, [currentProjectId])
 
 
   return (
@@ -152,22 +151,38 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <p className="mb-1 text-[12px] font-medium text-[#94969E]">Yesterday</p>
-              <p className="text-[13.5px] leading-relaxed text-[#F4F3EF]">
-               {
-                taskState.yesterday
-               }
-              </p>
+              <div className="space-y-2">
+                {taskState.yesterday
+                  ?.split("\n")
+                  .filter(Boolean)
+                  .map((line, index) => (
+                    <p
+                      key={index}
+                      className="text-[13.5px] leading-relaxed text-[#F4F3EF]"
+                    >
+                      {line}
+                    </p>
+                  ))}
+              </div>
             </div>
             <div className="rounded-lg border border-[#E0685F]/20 bg-[#E0685F]/[0.06] p-3">
               <div className="mb-1 flex items-center gap-1.5">
                 <AlertTriangle className="h-3.5 w-3.5 text-[#E0685F]" />
                 <p className="text-[12px] font-medium text-[#E0685F]">Today's prediction</p>
               </div>
-              <p className="text-[13.5px] leading-relaxed text-[#F4F3EF]">
-               {
-                taskState.prediction
-               }
-              </p>
+              <div className="space-y-2">
+                {taskState.prediction
+                  ?.split("\n")
+                  .filter(Boolean)
+                  .map((line, index) => (
+                    <p
+                      key={index}
+                      className="text-[13.5px] leading-relaxed text-[#F4F3EF]"
+                    >
+                      {line}
+                    </p>
+                  ))}
+              </div>
             </div>
           </div>
         </motion.div>
@@ -252,11 +267,10 @@ export default function Dashboard() {
             {projects.map((p) => (
               <div
                 key={p.id}
-                className={`rounded-xl border px-4 py-3 ${
-                  p.id === currentProjectId
-                    ? "border-[#8B7FE8]/30 bg-[#8B7FE8]/[0.06]"
-                    : "border-white/[0.08] bg-white/[0.02]"
-                }`}
+                className={`rounded-xl border px-4 py-3 ${p.id === currentProjectId
+                  ? "border-[#8B7FE8]/30 bg-[#8B7FE8]/[0.06]"
+                  : "border-white/[0.08] bg-white/[0.02]"
+                  }`}
               >
                 <p className="text-[13.5px] font-medium text-[#F4F3EF]">{p.name}</p>
                 <p className="text-[12px] text-[#55575F]">

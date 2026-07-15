@@ -3,11 +3,12 @@ import {
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
- type UserCredential,
+  type UserCredential,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   updateProfile,
+  GithubAuthProvider,
 } from "firebase/auth";
 import { auth } from "../firebase/config";
 
@@ -22,6 +23,20 @@ googleProvider.setCustomParameters({
   prompt: "select_account",
 });
 
+
+const githubProvider = new GithubAuthProvider();
+
+// Optional scopes
+githubProvider.addScope("read:user");
+githubProvider.addScope("user:email");
+githubProvider.addScope("repo"); // Required for private repositories
+githubProvider.addScope("workflow"); // GitHub Actions
+
+// Always prompt user to choose an account
+githubProvider.setCustomParameters({
+  allow_signup: "true",
+});
+
 /**
  * Login with Google (Popup)
  */
@@ -30,8 +45,8 @@ import axios from "axios";
 import { store } from "../store";
 import { setUser } from "../store/slices/authSlice";
 
-export const syncFirebaseUser = async (payload:any) => {
-  const { data } = await axios.post("https://aether-api-y0ob.onrender.com/api/v1/auth/firebase", 
+export const syncFirebaseUser = async (payload: any) => {
+  const { data } = await axios.post("https://aether-api-y0ob.onrender.com/api/v1/auth/firebase",
     payload,
   );
 
@@ -50,22 +65,22 @@ export const loginWithGoogle = async (): Promise<{
     const credential = GoogleAuthProvider.credentialFromResult(result);
 
 
-    const payload={
-      uid : result.user.uid,
-      email : result.user.email,
-      name : result.user.displayName,
-      picture : result.user.photoURL,
+    const payload = {
+      uid: result.user.uid,
+      email: result.user.email,
+      name: result.user.displayName,
+      picture: result.user.photoURL,
 
     }
 
-    const data=await syncFirebaseUser(payload)
+    const data = await syncFirebaseUser(payload)
 
-    localStorage.setItem("userId",data?.userId)
+    localStorage.setItem("userId", data?.userId)
     console.log(data)
 
-    
 
-    
+
+
 
     return {
       success: true,
@@ -128,6 +143,58 @@ export const getGoogleRedirectResult = async (): Promise<{
 
 
 
+export const loginWithGithub = async (): Promise<{
+  success: boolean;
+  user?: UserCredential["user"];
+  accessToken?: string;
+  error?: string;
+}> => {
+  try {
+
+
+
+    const result = await signInWithPopup(auth, githubProvider);
+
+
+    const credential = GithubAuthProvider.credentialFromResult(result);
+
+    console.log("cred", credential)
+
+    const payload = {
+      uid: result.user.uid,
+      email: result.user.email,
+      name: result.user.displayName,
+      picture: result.user.photoURL,
+
+    }
+
+    const data = await syncFirebaseUser(payload)
+
+    localStorage.setItem("userId", data?.userId)
+    console.log(data)
+
+
+
+    return {
+      success: true,
+      user: result.user,
+      accessToken: credential?.accessToken,
+    };
+  } catch (error: any) {
+    console.error("GitHub Connect:", error);
+
+
+
+    return {
+      success: false,
+      error: error.message ?? "Failed to connect GitHub.",
+    };
+  }
+};
+
+
+
+
 
 
 /**
@@ -149,17 +216,17 @@ export const loginWithEmail = async (
       password
     );
 
-    const payload={
-      uid : result.user.uid,
-      email : result.user.email,
-      name : result.user.displayName,
-      picture : result.user.photoURL,
+    const payload = {
+      uid: result.user.uid,
+      email: result.user.email,
+      name: result.user.displayName,
+      picture: result.user.photoURL,
 
     }
 
-    const data=await syncFirebaseUser(payload)
+    const data = await syncFirebaseUser(payload)
 
-    localStorage.setItem("userId",data?.userId)
+    localStorage.setItem("userId", data?.userId)
     console.log(data)
 
     return {
@@ -200,17 +267,17 @@ export const signUpWithEmail = async (
       displayName: name,
     });
 
-    const payload={
-      uid : result.user.uid,
-      email : result.user.email,
-      name : result.user.displayName,
-      picture : result.user.photoURL,
+    const payload = {
+      uid: result.user.uid,
+      email: result.user.email,
+      name: result.user.displayName,
+      picture: result.user.photoURL,
 
     }
 
-    const data=await syncFirebaseUser(payload)
+    const data = await syncFirebaseUser(payload)
 
-    localStorage.setItem("userId",data?.userId)
+    localStorage.setItem("userId", data?.userId)
     console.log(data)
 
     return {
@@ -290,26 +357,26 @@ const getFirebaseError = (code: string): string => {
   }
 };
 
-export const loadUser=async()=>{
-  const userId=localStorage.getItem('userId')
+export const loadUser = async () => {
+  const userId = localStorage.getItem('userId')
 
-  try{
+  try {
 
-    const response=await axios.get(`https://aether-api-y0ob.onrender.com/api/v1/auth/user/${userId}`)
+    const response = await axios.get(`https://aether-api-y0ob.onrender.com/api/v1/auth/user/${userId}`)
 
-    const data=response.data.user
+    const data = response.data.user
 
-    const userState=store.getState().auth.user
+    const userState = store.getState().auth.user
 
     store.dispatch(setUser({
-      email : data?.email,
-      name:data?.fullName,
-      githubToken:data?.githubAccessToken,
-      avatarUrl:data?.profileImage
+      email: data?.email,
+      name: data?.fullName,
+      githubToken: data?.githubAccessToken,
+      avatarUrl: data?.profileImage
     }))
 
   }
-  catch(err){
+  catch (err) {
 
   }
 
