@@ -13,9 +13,9 @@ import { GlassCard } from "../components/ui/GlassCard";
 import { PageSection } from "../components/ui/PageSection";
 import { Button } from "../components/ui/Button";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { selectPr} from "../store/slices/reviewsSlice";
+import { selectPr } from "../store/slices/reviewsSlice";
 import type { ReviewFinding } from "../store/types";
-import { setPullRequestByFetching ,analyzePullRequest} from "../services/codeReviews";
+import { setPullRequestByFetching, analyzePullRequest } from "../services/codeReviews";
 import { useEffect } from "react";
 
 const CATEGORY_CONFIG: Record<
@@ -51,9 +51,9 @@ function FindingCard({ finding }: { finding: ReviewFinding }) {
 
 export default function CodeReviews() {
   const dispatch = useAppDispatch();
-  const { pullRequests, selectedPrId, isAnalyzing } = useAppSelector((s) => s.reviews);
+  const { pullRequests, selectedPrId, isAnalyzing, isLoading } = useAppSelector((s) => s.reviews);
   const currentProjectId = useAppSelector((s) => s.projects.currentProjectId);
-  const currentRepoId=useAppSelector((s)=>s.projects.currentRepoId)
+  const currentRepoId = useAppSelector((s) => s.projects.currentRepoId)
   const selectedPr = pullRequests.find((p) => p.id === selectedPrId);
 
   const handleAnalyze = () => {
@@ -65,15 +65,17 @@ export default function CodeReviews() {
     }));
   };
 
-  const loadPullRequests=async()=>{
+  const loadPullRequests = async () => {
     await dispatch(setPullRequestByFetching(currentProjectId as string))
 
   }
 
-  useEffect(()=>{
+  useEffect(() => {
+    if(currentProjectId){
     loadPullRequests()
+    }
 
-  },[currentProjectId])
+  }, [currentProjectId])
 
   return (
     <AppShell title="Code review agent">
@@ -86,36 +88,72 @@ export default function CodeReviews() {
         />
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-          <motion.div
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.05 }}
-            className="space-y-2 lg:col-span-2"
-          >
-            {pullRequests.map((pr) => (
-              <button
-                key={pr.id}
-                onClick={() => dispatch(selectPr(pr.id))}
-                className={`flex w-full items-start gap-3 rounded-xl border p-4 text-left transition-colors ${
-                  pr.id === selectedPrId
-                    ? "border-[#8B7FE8]/30 bg-[#8B7FE8]/[0.06]"
-                    : "border-white/[0.08] bg-white/[0.02] hover:border-white/[0.16]"
-                }`}
+          {
+            isLoading ? (
+              <motion.div
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.05 }}
+                className="space-y-2 lg:col-span-2"
               >
-                <GitPullRequest className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#22A67D]" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[12px] text-[#94969E]">#{pr.number}</span>
-                    {pr.reviewed && (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-[#22A67D]" />
-                    )}
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="flex w-full items-start gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 animate-pulse"
+                  >
+                    {/* GitPullRequest Icon */}
+                    <div className="mt-0.5 h-4 w-4 rounded-full bg-white/10 flex-shrink-0" />
+
+                    <div className="min-w-0 flex-1">
+                      {/* PR Number + Check */}
+                      <div className="mb-2 flex items-center gap-2">
+                        <div className="h-3 w-10 rounded bg-white/10" />
+                        <div className="h-3.5 w-3.5 rounded-full bg-white/10" />
+                      </div>
+
+                      {/* Title */}
+                      <div className="mb-2 h-4 w-4/5 rounded bg-white/10" />
+
+                      {/* Author */}
+                      <div className="h-3 w-1/3 rounded bg-white/10" />
+                    </div>
                   </div>
-                  <p className="truncate text-[13.5px] font-medium text-[#F4F3EF]">{pr.title}</p>
-                  <p className="text-[12px] text-[#55575F]">by {pr.author}</p>
-                </div>
-              </button>
-            ))}
-          </motion.div>
+                ))}
+
+              </motion.div>
+
+
+            ) :
+
+              (<motion.div
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.05 }}
+                className="space-y-2 lg:col-span-2"
+              >
+                {pullRequests.map((pr) => (
+                  <button
+                    key={pr.id}
+                    onClick={() => dispatch(selectPr(pr.id))}
+                    className={`flex w-full items-start gap-3 rounded-xl border p-4 text-left transition-colors ${pr.id === selectedPrId
+                        ? "border-[#8B7FE8]/30 bg-[#8B7FE8]/[0.06]"
+                        : "border-white/[0.08] bg-white/[0.02] hover:border-white/[0.16]"
+                      }`}
+                  >
+                    <GitPullRequest className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#22A67D]" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[12px] text-[#94969E]">#{pr.number}</span>
+                        {pr.reviewed && (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-[#22A67D]" />
+                        )}
+                      </div>
+                      <p className="truncate text-[13.5px] font-medium text-[#F4F3EF]">{pr.title}</p>
+                      <p className="text-[12px] text-[#55575F]">by {pr.author}</p>
+                    </div>
+                  </button>
+                ))}
+              </motion.div>)}
 
           <motion.div
             initial={{ opacity: 0, x: 8 }}
