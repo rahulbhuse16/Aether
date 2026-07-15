@@ -53,12 +53,13 @@ export default function CodeReviews() {
   const dispatch = useAppDispatch();
   const { pullRequests, selectedPrId, isAnalyzing } = useAppSelector((s) => s.reviews);
   const currentProjectId = useAppSelector((s) => s.projects.currentProjectId);
+  const currentRepoId=useAppSelector((s)=>s.projects.currentRepoId)
   const selectedPr = pullRequests.find((p) => p.id === selectedPrId);
 
   const handleAnalyze = () => {
-    if (!selectedPr || !currentProjectId) return;
+    if (!selectedPr || !currentRepoId) return;
     dispatch(analyzePullRequest({
-      projectId: currentProjectId,
+      projectId: currentRepoId as string,
       prNumber: selectedPr.number,
       prId: selectedPr.id
     }));
