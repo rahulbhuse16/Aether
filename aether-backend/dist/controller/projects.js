@@ -115,6 +115,7 @@ const getUserProjects = async (req, res) => {
                     repo: project.repo,
                     openTasks: project.openTasks,
                     lastActivity: project.lastActivity,
+                    projectId: project._id.toString(),
                 })),
                 currentProjectId: projects.length > 0 ? projects[0]._id.toString() : null,
             },
