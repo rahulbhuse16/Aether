@@ -24,6 +24,20 @@ const ProjectSchema = new mongoose_1.default.Schema({
     },
     lastActivity: String,
     githubUpdatedAt: Date,
+    // AI-generated on first index (see onboardingController.ts) — kept
+    // optional/no-default so existing projects indexed before this field
+    // existed just read back as undefined/empty rather than breaking.
+    description: {
+        type: String,
+    },
+    stack: {
+        type: [String],
+        default: [],
+    },
+    setupComplexity: {
+        type: String,
+        enum: ["low", "medium", "high"],
+    },
 }, {
     timestamps: true,
 });
