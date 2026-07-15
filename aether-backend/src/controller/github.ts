@@ -2,6 +2,7 @@ import { ENV } from "../config/env";
 import axios from "axios";
 import { Request, Response } from "express";
 import { connectGithubAccount } from "../services/github-sync";
+import { User } from "../models/user";
 
 
 
@@ -121,6 +122,85 @@ export const githubCallback = async (
       success: false,
       message: "GitHub authentication failed.",
       error: error.response?.data || error.message,
+    });
+  }
+};
+
+
+
+
+
+export const getPRByRepoId = async (
+  req: Request,
+  res: Response
+)=> {
+  try {
+    const { repoId,userId } = req.query;
+
+    
+
+
+    if (!repoId || !userId) {
+      res.status(400).json({
+        success: false,
+        message: "Repository ID or User Id is required.",
+      });
+      return;
+    }
+
+    const user = await User.findById(userId).select("+githubAccessToken");
+        if (!user?.githubAccessToken) {
+          return res.status(409).json({ error: "GitHub account not connected" });
+        }
+    const accessToken = user.githubAccessToken;
+
+    const headers = {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    };
+
+    // Step 1: Get repository details from repository ID
+    const { data: repo } = await axios.get(
+      `https://api.github.com/repositories/${repoId}`,
+      { headers }
+    );
+
+    const owner = repo.owner.login;
+    const name = repo.name;
+
+    // Step 2: Get all pull requests
+    const { data: prs } = await axios.get(
+      `https://api.github.com/repos/${owner}/${name}/pulls?state=all`,
+      { headers }
+    );
+
+    const pullRequests = prs.map((pr: any) => ({
+      id: `pr${pr.id}`,
+      number: pr.number,
+      title: pr.title,
+      author: pr.user.login,
+      status: pr.state, // open | closed
+      reviewed: pr.requested_reviewers.length === 0,
+    }));
+
+    res.status(200).json({
+      success: true,
+      repository: {
+        id: repo.id,
+        name: repo.name,
+        owner: owner,
+      },
+      count: pullRequests.length,
+      pullRequests,
+    });
+  } catch (error: any) {
+    console.error("GitHub API Error:", error.response?.data || error.message);
+
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message:
+        error.response?.data?.message || "Failed to fetch pull requests.",
     });
   }
 };

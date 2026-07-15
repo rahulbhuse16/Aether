@@ -11,6 +11,7 @@ const github_1 = __importDefault(require("./router/github"));
 const project_1 = __importDefault(require("./router/project"));
 const dashboard_1 = __importDefault(require("./router/dashboard"));
 const chat_1 = __importDefault(require("./router/chat"));
+const code_review_1 = __importDefault(require("./router/code-review"));
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
@@ -20,6 +21,7 @@ app.use('/api/v1/projects', project_1.default);
 app.use('/api/v1/github', github_1.default);
 app.use('/api/v1/dashboard', dashboard_1.default);
 app.use('/api/v1/chat', chat_1.default);
+app.use('/api/v1/code-review', code_review_1.default);
 (0, connectDB_1.connectDB)();
 app.listen(5000, () => {
     console.log("running on port 5000");

@@ -11,6 +11,7 @@ gitHubRouter.get("/connect", github_1.githubConnect);
 gitHubRouter.get("/callback", github_1.githubCallback);
 gitHubRouter.get("/repos/:id", onboarding_1.listGithubRepos);
 gitHubRouter.post("/index/:id", onboarding_1.indexRepository);
+gitHubRouter.get("/pulls", github_1.getPRByRepoId);
 gitHubRouter.get("/test", (_, res) => {
     res.json({
         success: true,

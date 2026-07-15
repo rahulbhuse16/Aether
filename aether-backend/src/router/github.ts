@@ -1,4 +1,4 @@
-import { githubConnect,githubCallback } from "../controller/github"
+import { githubConnect,githubCallback,getPRByRepoId } from "../controller/github"
 import express from 'express'
 import { listGithubRepos, indexRepository } from "../controller/onboarding";
 const gitHubRouter=express.Router()
@@ -8,6 +8,7 @@ gitHubRouter.get("/callback", githubCallback);
 
 gitHubRouter.get("/repos/:id", listGithubRepos);
 gitHubRouter.post("/index/:id", indexRepository);
+gitHubRouter.get("/pulls",getPRByRepoId)
 
 
 gitHubRouter.get("/test", (_, res) => {
