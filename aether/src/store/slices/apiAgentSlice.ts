@@ -3,57 +3,18 @@ import type { ApiArtifact } from "../types";
 
 interface ApiAgentState {
   swaggerUrl: string;
+  specTitle: string | null;
   artifacts: ApiArtifact[];
   isGenerating: boolean;
+  error: string | null;
 }
 
 const initialState: ApiAgentState = {
   swaggerUrl: "https://api.example.com/swagger.json",
+  specTitle: null,
   isGenerating: false,
-  artifacts: [
-    {
-      id: "api1",
-      name: "API Documentation",
-      type: "docs",
-      status: "ready",
-      preview: "## Users API\n\n### GET /users\nReturns list of users.\n\n### POST /users\nCreates a new user.",
-    },
-    {
-      id: "api2",
-      name: "React Query Hooks",
-      type: "hooks",
-      status: "ready",
-      preview: "export function useUsers() {\n  return useQuery({ queryKey: ['users'], queryFn: fetchUsers });\n}",
-    },
-    {
-      id: "api3",
-      name: "TypeScript Types",
-      type: "types",
-      status: "ready",
-      preview: "interface User {\n  id: string;\n  email: string;\n  name: string;\n}",
-    },
-    {
-      id: "api4",
-      name: "Axios Service",
-      type: "service",
-      status: "ready",
-      preview: "export const userService = {\n  getAll: () => api.get<User[]>('/users'),\n};",
-    },
-    {
-      id: "api5",
-      name: "Postman Collection",
-      type: "postman",
-      status: "ready",
-      preview: '{ "info": { "name": "API Collection" }, "item": [...] }',
-    },
-    {
-      id: "api6",
-      name: "Test Cases",
-      type: "tests",
-      status: "ready",
-      preview: "describe('Users API', () => {\n  it('should return users', async () => {...});\n});",
-    },
-  ],
+  error: null,
+  artifacts: [],
 };
 
 const apiAgentSlice = createSlice({
@@ -65,6 +26,26 @@ const apiAgentSlice = createSlice({
     },
     setGenerating(state, action: PayloadAction<boolean>) {
       state.isGenerating = action.payload;
+      if (action.payload) state.error = null;
+    },
+    setArtifacts(state, action: PayloadAction<{ artifacts: ApiArtifact[]; specTitle?: string | null }>) {
+      state.artifacts = action.payload.artifacts;
+      state.specTitle = action.payload.specTitle ?? state.specTitle;
+      state.isGenerating = false;
+      state.error = null;
+    },
+    upsertArtifact(state, action: PayloadAction<ApiArtifact>) {
+      const idx = state.artifacts.findIndex((a) => a.type === action.payload.type);
+      if (idx >= 0) state.artifacts[idx] = action.payload;
+      else state.artifacts.push(action.payload);
+    },
+    setArtifactStatus(state, action: PayloadAction<{ type: ApiArtifact["type"]; status: ApiArtifact["status"] }>) {
+      const artifact = state.artifacts.find((a) => a.type === action.payload.type);
+      if (artifact) artifact.status = action.payload.status;
+    },
+    setError(state, action: PayloadAction<string | null>) {
+      state.error = action.payload;
+      state.isGenerating = false;
     },
     addArtifact(state, action: PayloadAction<ApiArtifact>) {
       state.artifacts.push(action.payload);
@@ -72,5 +53,13 @@ const apiAgentSlice = createSlice({
   },
 });
 
-export const { setSwaggerUrl, setGenerating, addArtifact } = apiAgentSlice.actions;
+export const {
+  setSwaggerUrl,
+  setGenerating,
+  setArtifacts,
+  upsertArtifact,
+  setArtifactStatus,
+  setError,
+  addArtifact,
+} = apiAgentSlice.actions;
 export default apiAgentSlice.reducer;

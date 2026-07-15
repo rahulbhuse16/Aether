@@ -81,8 +81,9 @@ export interface ApiArtifact {
   id: string;
   name: string;
   type: "docs" | "hooks" | "types" | "service" | "postman" | "tests";
-  status: "ready" | "generating";
+  status: "ready" | "generating" | string;
   preview: string;
+  content:any
 }
 
 export interface BugReport {
