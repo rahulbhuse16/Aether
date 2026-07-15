@@ -1,7 +1,9 @@
-import { connectGithubAccount} from "../controller/github"
+import { githubConnect,githubCallback } from "../controller/github"
 import express from 'express'
 const gitHubRouter=express.Router()
-gitHubRouter.post('/connect',connectGithubAccount)
+
+gitHubRouter.get("/connect", githubConnect);
+gitHubRouter.get("/callback", githubCallback);
 
 
 gitHubRouter.get("/test", (_, res) => {

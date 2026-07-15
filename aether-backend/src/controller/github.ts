@@ -1,107 +1,126 @@
-import { Project } from "../models/project";
-import { User } from "../models/user";
-import { formatTimeAgo } from "../utils/helper";
+import { ENV } from "../config/env";
 import axios from "axios";
 import { Request, Response } from "express";
+import { connectGithubAccount } from "../services/github-sync";
 
 
-export const connectGithubAccount = async (
+
+
+
+
+
+
+/**
+ * Redirect user to GitHub OAuth
+ * GET /api/github/connect
+ */
+export const githubConnect = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  console.log("githubConnect")
+  try {
+    const clientId = ENV.GITHUB_CLIENT_ID;
+    const {state}=req.query
+
+    if (!clientId) {
+      res.status(500).json({
+        success: false,
+        message: "GitHub Client ID is missing.",
+      });
+      return;
+    }
+
+    const scopes = [
+      "read:user",
+      "user:email",
+      "repo",
+      "workflow",
+    ].join(" ");
+
+    const githubUrl =
+      "https://github.com/login/oauth/authorize" +
+      `?client_id=${ENV.GITHUB_CLIENT_ID}` +
+      `&redirect_uri=${encodeURIComponent(ENV.GITHUB_REDIRECT_URI)}` +
+      `&scope=${encodeURIComponent(scopes)}` +
+      `&allow_signup=true` + `&state=${encodeURIComponent(state as string)}`;
+
+    res.redirect(githubUrl);
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "GitHub connection failed.",
+    });
+  }
+};
+
+/**
+ * GitHub OAuth Callback
+ * GET /api/github/callback
+ */
+export const githubCallback = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    const { userId, accessToken } = req.body;
+    const { code,state } = req.query;
 
-    if (!userId || !accessToken) {
+    console.log("code", code)
+
+    if (!code || typeof code !== "string") {
       res.status(400).json({
         success: false,
-        message: "userId and accessToken are required.",
+        message: "Authorization code is missing.",
       });
       return;
     }
 
-    const user = await User.findById(userId);
-
-    if (!user) {
-      res.status(404).json({
-        success: false,
-        message: "User not found.",
-      });
-      return;
-    }
-
-    // Save GitHub token
-    user.githubAccessToken = accessToken;
-    user.githubConnected = true;
-
-    await user.save();
-
-    // Fetch repositories
-    const { data: repos } = await axios.get(
-      "https://api.github.com/user/repos",
+    const tokenResponse = await axios.post(
+      "https://github.com/login/oauth/access_token",
+      {
+        client_id: process.env.GITHUB_CLIENT_ID,
+        client_secret: process.env.GITHUB_CLIENT_SECRET,
+        code,
+        redirect_uri: process.env.GITHUB_REDIRECT_URI,
+      },
       {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/vnd.github+json",
-        },
-        params: {
-          sort: "updated",
-          per_page: 100,
+          Accept: "application/json",
         },
       }
     );
 
-    const bulkOperations = repos.map((repo: any) => ({
-      updateOne: {
-        filter: {
-          owner: user._id,
-          githubRepoId: repo.id,
-        },
-        update: {
-          $set: {
-            owner: user._id,
-            githubRepoId: repo.id,
-            name: repo.name,
-            repo: repo.full_name,
-            openTasks: repo.open_issues_count,
-            lastActivity: formatTimeAgo(repo.updated_at),
-            githubUpdatedAt: repo.updated_at,
-          },
-        },
-        upsert: true,
-      },
-    }));
+    const accessToken = tokenResponse.data.access_token;
 
-    if (bulkOperations.length) {
-      await Project.bulkWrite(bulkOperations);
+    console.log("accessToken", accessToken)
+
+
+    if (!accessToken) {
+      res.status(400).json({
+        success: false,
+        message: "Unable to retrieve GitHub access token.",
+      });
+      return;
     }
 
-    const projects = await Project.find({ owner: user._id })
-      .sort({ githubUpdatedAt: -1 })
-      .select("name repo openTasks lastActivity");
+    
 
-    res.status(200).json({
-      success: true,
-      message: "GitHub connected successfully.",
-      data: {
-        projects: projects.map((project) => ({
-          id: project.githubRepoId,
-          name: project.name,
-          repo: project.repo,
-          openTasks: project.openTasks,
-          lastActivity: project.lastActivity,
-        })),
-        currentProjectId: projects.length
-          ? projects[0]._id.toString()
-          : null,
-      },
-    });
+
+    await connectGithubAccount(state as string,accessToken)
+
+
+
+
+    res.redirect(
+      `${ENV.FRONTEND_URL}/onboarding?success=true`
+    );
   } catch (error: any) {
-    console.error(error);
+    console.error("GitHub Callback Error:", error.response?.data || error);
 
     res.status(500).json({
       success: false,
-      message: "Failed to connect GitHub.",
+      message: "GitHub authentication failed.",
+      error: error.response?.data || error.message,
     });
   }
 };

@@ -6,7 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const github_1 = require("../controller/github");
 const express_1 = __importDefault(require("express"));
 const gitHubRouter = express_1.default.Router();
-gitHubRouter.post('/connect', github_1.connectGithubAccount);
+gitHubRouter.get("/connect", github_1.githubConnect);
+gitHubRouter.get("/callback", github_1.githubCallback);
 gitHubRouter.get("/test", (_, res) => {
     res.json({
         success: true,
