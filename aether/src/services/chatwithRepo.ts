@@ -19,6 +19,7 @@ export interface RepoChatMessage {
   content: string;
   timestamp: string;
   sources: string[];
+  suggestions: string[];
 }
 
 async function readErrorMessage(res: Response, fallback: string): Promise<string> {

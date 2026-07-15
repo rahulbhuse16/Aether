@@ -1,5 +1,6 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import { createSlice,type PayloadAction } from "@reduxjs/toolkit";
 import type { PullRequest } from "../types";
+import { analyzePullRequest ,setPullRequestByFetching} from "../../services/codeReviews";
 
 interface ReviewsState {
   pullRequests: PullRequest[];
@@ -61,6 +62,8 @@ const initialState: ReviewsState = {
   isAnalyzing: false,
 };
 
+
+
 const reviewsSlice = createSlice({
   name: "reviews",
   initialState,
@@ -75,6 +78,27 @@ const reviewsSlice = createSlice({
       const pr = state.pullRequests.find((p) => p.id === action.payload);
       if (pr) pr.reviewed = true;
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(analyzePullRequest.pending, (state) => {
+        state.isAnalyzing = true;
+      })
+      .addCase(analyzePullRequest.fulfilled, (state, action) => {
+        state.isAnalyzing = false;
+        const pr = state.pullRequests.find((p) => p.id === action.payload.prId);
+        if (pr) {
+          pr.reviewed = true;
+          pr.findings = action.payload.findings;
+        }
+      })
+      .addCase(analyzePullRequest.rejected, (state) => {
+        state.isAnalyzing = false;
+      })
+      .addCase(setPullRequestByFetching.fulfilled, (state,action) => {
+        state.pullRequests = action.payload.pullRequests ;
+      })
+      ;
   },
 });
 

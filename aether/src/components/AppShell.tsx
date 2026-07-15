@@ -62,12 +62,14 @@ export function AppShell({
 }) {
   const pathname = useLocation().pathname;
   const dispatch = useAppDispatch();
-  const navigate=useNavigate()
+  const navigate = useNavigate();
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
 
   const user = useAppSelector((s) => s.auth.user);
-  const projects = useAppSelector((s) => s.projects.projects);
-  const currentProjectId = useAppSelector((s) => s.projects.currentProjectId);
+  const projectsState = useAppSelector((s) => s.projects);
+  const projects = projectsState.projects;
+  const currentProjectId = projectsState.currentProjectId;
+  const projectsLoading = projectsState.loading;
   const sidebarCollapsed = useAppSelector((s) => s.ui.sidebarCollapsed);
   const budget = useAppSelector((s) => s.budget);
 
@@ -97,7 +99,7 @@ export function AppShell({
       <motion.aside
         animate={{ width: sidebarCollapsed ? 72 : 240 }}
         transition={{ duration: 0.2 }}
-        className="relative flex flex-shrink-0 flex-col border-r border-white/[0.06] bg-[#0A0B0D]"
+        className="relative flex flex-shrink-0 flex-col border-r border-[#0A0B0D] bg-[#0A0B0D]"
       >
         <div className="flex h-16 items-center gap-2.5 border-b border-white/[0.06] px-4">
           <Logo size={26} />
@@ -110,26 +112,39 @@ export function AppShell({
 
         {/* Project switcher */}
         <div className="relative border-b border-white/[0.06] px-3 py-3">
-          <button
-            onClick={() => setProjectMenuOpen((v) => !v)}
-            className="flex w-full items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-left transition-colors hover:bg-white/[0.04]"
-          >
-            {!sidebarCollapsed ? (
-              <>
-                <div className="min-w-0">
-                  <p className="truncate text-[13px] font-medium text-[#F4F3EF]">
-                    {currentProject?.name ?? "Select project"}
-                  </p>
-                  <p className="truncate text-[11px] text-[#55575F]">
-                    {currentProject?.repo}
-                  </p>
-                </div>
-                <ChevronDown className="h-4 w-4 flex-shrink-0 text-[#55575F]" />
-              </>
+          {projectsLoading && !currentProject ? (
+            sidebarCollapsed ? (
+              <div className="flex h-10 w-full items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.02]">
+                <div className="h-2 w-2 rounded-full bg-[#22A67D]/50 animate-pulse" />
+              </div>
             ) : (
-              <span className="mx-auto h-2 w-2 rounded-full bg-[#22A67D]" />
-            )}
-          </button>
+              <div className="w-full rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2.5 animate-pulse">
+                <div className="h-3.5 w-24 rounded bg-white/10 mb-1.5" />
+                <div className="h-3 w-32 rounded bg-white/5" />
+              </div>
+            )
+          ) : (
+            <button
+              onClick={() => setProjectMenuOpen((v) => !v)}
+              className="flex w-full items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-left transition-colors hover:bg-white/[0.04]"
+            >
+              {!sidebarCollapsed ? (
+                <>
+                  <div className="min-w-0">
+                    <p className="truncate text-[13px] font-medium text-[#F4F3EF]">
+                      {currentProject?.name ?? "Select project"}
+                    </p>
+                    <p className="truncate text-[11px] text-[#55575F]">
+                      {currentProject?.repo}
+                    </p>
+                  </div>
+                  <ChevronDown className="h-4 w-4 flex-shrink-0 text-[#55575F]" />
+                </>
+              ) : (
+                <span className="mx-auto h-2 w-2 rounded-full bg-[#22A67D]" />
+              )}
+            </button>
+          )}
 
           {projectMenuOpen && !sidebarCollapsed && (
             <div className="absolute left-3 right-3 top-[calc(100%-4px)] z-20 overflow-hidden rounded-lg border border-white/[0.08] bg-[#101215] shadow-xl">

@@ -13,12 +13,14 @@ import { GlassCard } from "../components/ui/GlassCard";
 import { PageSection } from "../components/ui/PageSection";
 import { Button } from "../components/ui/Button";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { selectPr, setAnalyzing, markReviewed } from "../store/slices/reviewsSlice";
+import { selectPr} from "../store/slices/reviewsSlice";
 import type { ReviewFinding } from "../store/types";
+import { setPullRequestByFetching ,analyzePullRequest} from "../services/codeReviews";
+import { useEffect } from "react";
 
 const CATEGORY_CONFIG: Record<
   ReviewFinding["category"],
-  { icon: React.ComponentType<{ className?: string }>; color: string; label: string }
+  { icon: React.ComponentType<{ className?: string; color?: string }>; color: string; label: string }
 > = {
   bug: { icon: Bug, color: "#E0685F", label: "Bug" },
   performance: { icon: Gauge, color: "#8B7FE8", label: "Performance" },
@@ -50,16 +52,27 @@ function FindingCard({ finding }: { finding: ReviewFinding }) {
 export default function CodeReviews() {
   const dispatch = useAppDispatch();
   const { pullRequests, selectedPrId, isAnalyzing } = useAppSelector((s) => s.reviews);
+  const currentProjectId = useAppSelector((s) => s.projects.currentProjectId);
   const selectedPr = pullRequests.find((p) => p.id === selectedPrId);
 
-  const handleAnalyze = (prId: string) => {
-    dispatch(selectPr(prId));
-    dispatch(setAnalyzing(true));
-    setTimeout(() => {
-      dispatch(setAnalyzing(false));
-      dispatch(markReviewed(prId));
-    }, 2000);
+  const handleAnalyze = () => {
+    if (!selectedPr || !currentProjectId) return;
+    dispatch(analyzePullRequest({
+      projectId: currentProjectId,
+      prNumber: selectedPr.number,
+      prId: selectedPr.id
+    }));
   };
+
+  const loadPullRequests=async()=>{
+    await dispatch(setPullRequestByFetching(currentProjectId as string))
+
+  }
+
+  useEffect(()=>{
+    loadPullRequests()
+
+  },[currentProjectId])
 
   return (
     <AppShell title="Code review agent">
@@ -122,7 +135,7 @@ export default function CodeReviews() {
                     <Button
                       variant="primary"
                       size="sm"
-                      onClick={() => handleAnalyze(selectedPr.id)}
+                      onClick={() => handleAnalyze()}
                       disabled={isAnalyzing}
                     >
                       {isAnalyzing ? (

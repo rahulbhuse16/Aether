@@ -30,6 +30,8 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: string;
+  sources?: string[];
+  suggestions?: string[];
 }
 
 export interface ReviewFinding {

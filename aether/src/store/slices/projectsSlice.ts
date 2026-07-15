@@ -5,8 +5,8 @@ import { fetchUserProjects } from "../../services/dashboard";
 interface ProjectsState {
   projects: Project[];
   currentProjectId: string | null;
-  currentRepoId:string | null
-
+  currentRepoId:string | null;
+  loading: boolean;
 }
 
 const initialState: ProjectsState = {
@@ -14,8 +14,8 @@ const initialState: ProjectsState = {
    
   ],
   currentProjectId: "",
-  currentRepoId:""
-  
+  currentRepoId:"",
+  loading: false
 };
 
 const projectsSlice = createSlice({
@@ -35,9 +35,17 @@ const projectsSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    builder.addCase(fetchUserProjects.fulfilled, (state, action) => {
-      state.projects = action.payload.projects;
-    });
+    builder
+      .addCase(fetchUserProjects.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchUserProjects.fulfilled, (state, action) => {
+        state.loading = false;
+        state.projects = action.payload.projects;
+      })
+      .addCase(fetchUserProjects.rejected, (state) => {
+        state.loading = false;
+      });
   }
 
 });

@@ -6,19 +6,15 @@ interface TasksState {
   tasks: Task[];
   yesterday : string;
   prediction:string;
+  loading: boolean;
 }
 
 const initialState: TasksState = {
   tasks: [
-    { id: "t1", title: "Fix login bug", status: "in_progress", source: "github", priority: "high" },
-    { id: "t2", title: "Review PR #42", status: "open", source: "github", priority: "medium" },
-    { id: "t3", title: "Deploy backend to staging", status: "open", source: "jira", priority: "medium" },
-    { id: "t4", title: "Payment service memory usage rising — investigate", status: "open", source: "ai", priority: "high" },
-    { id: "t5", title: "Meeting at 3 PM — sprint planning", status: "open", source: "ai", priority: "low", dueDate: "Today" },
-    { id: "t6", title: "Optimize Redis cache layer", status: "open", source: "ai", priority: "high" },
   ],
   yesterday:"",
-  prediction:""
+  prediction:"",
+  loading: false
 };
 
 const tasksSlice = createSlice({
@@ -44,11 +40,19 @@ const tasksSlice = createSlice({
     
   },
   extraReducers: (builder) => {
-    builder.addCase(fetchDailyDigest.fulfilled, (state, action) => {
-      state.tasks = action.payload.tasks;
-      state.yesterday = action.payload.yesterday;
-      state.prediction = action.payload.prediction;
-    });
+    builder
+      .addCase(fetchDailyDigest.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchDailyDigest.fulfilled, (state, action) => {
+        state.loading = false;
+        state.tasks = action.payload.tasks;
+        state.yesterday = action.payload.yesterday;
+        state.prediction = action.payload.prediction;
+      })
+      .addCase(fetchDailyDigest.rejected, (state) => {
+        state.loading = false;
+      });
   }
 });
 

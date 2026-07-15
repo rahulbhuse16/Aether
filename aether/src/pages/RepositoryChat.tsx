@@ -1,4 +1,4 @@
-import { useCallback, useState, type JSX } from "react";
+import { useCallback, useEffect, useState, type JSX } from "react";
 import { motion } from "framer-motion";
 import { AlertCircle, Bot, FileCode2, Send, Sparkles, User } from "lucide-react";
 import { AppShell } from "../components/AppShell";
@@ -8,7 +8,7 @@ import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { setInput, addMessage, setTyping } from "../store/slices/chatSlice";
 import { sendRepoChatMessage, type ChatHistoryTurn } from "../services/chatwithRepo";
 
-const SUGGESTIONS = [
+const DEFAULT_SUGGESTIONS = [
   "Where is login implemented?",
   "How can I migrate Redux to Zustand?",
   "Show me the payment service architecture",
@@ -66,6 +66,18 @@ export default function RepositoryChat() {
 
   const [sendError, setSendError] = useState<string | null>(null);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>(DEFAULT_SUGGESTIONS);
+
+  useEffect(() => {
+    const lastAssistantMsg = [...messages].reverse().find(
+      (m) => m.role === "assistant"
+    );
+    if (lastAssistantMsg?.suggestions && lastAssistantMsg.suggestions.length > 0) {
+      setSuggestions(lastAssistantMsg.suggestions.slice(0, 5));
+    } else {
+      setSuggestions(DEFAULT_SUGGESTIONS);
+    }
+  }, [messages]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -208,7 +220,7 @@ export default function RepositoryChat() {
 
           <div className="border-t border-white/[0.06] p-4">
             <div className="mb-3 flex flex-wrap gap-2">
-              {SUGGESTIONS.map((s) => (
+              {suggestions.map((s) => (
                 <button
                   key={s}
                   onClick={() => sendMessage(s)}
