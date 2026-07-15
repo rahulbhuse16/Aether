@@ -7,6 +7,7 @@ import projectRouter from './router/project'
 import dashBoardRouter from './router/dashboard'
 import chatRouter from './router/chat'
 import codeReviewRouter from './router/code-review'
+import apiAgentRouter from './router/api-agent'
 const app=express()
 app.use(cors())
 app.use(express.json())
@@ -19,6 +20,7 @@ app.use('/api/v1/github',gitHubRouter)
 app.use('/api/v1/dashboard',dashBoardRouter)
 app.use('/api/v1/chat',chatRouter)
 app.use('/api/v1/code-review',codeReviewRouter)
+app.use('/api/v1/api-agent',apiAgentRouter)
 
 
 

@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const api_agent_1 = require("../controller/api-agent");
+const apiAgentRouter = (0, express_1.Router)();
+apiAgentRouter.post("/generate", api_agent_1.generateArtifacts);
+apiAgentRouter.post("/regenerate", api_agent_1.regenerateArtifact);
+apiAgentRouter.get("/latest", api_agent_1.getLatestSession);
+apiAgentRouter.get("/history", api_agent_1.listSessions);
+apiAgentRouter.delete("/:sessionId", api_agent_1.deleteSession);
+exports.default = apiAgentRouter;
