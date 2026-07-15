@@ -156,6 +156,7 @@ interface ChatContext {
   branch: string;
   readmeExcerpt: string | null;
   files: RepoFile[];
+  repoTree: string[];
 }
 
 const MAX_CONTEXT_FILES = 6;
@@ -229,7 +230,7 @@ async function gatherChatContext(
       .slice(0, 1200);
   }
 
-  return { repoFullName, branch, readmeExcerpt, files };
+  return { repoFullName, branch, readmeExcerpt, files, repoTree: paths };
 }
 
 /* ---------------------------------------------------------------- */
@@ -239,6 +240,7 @@ async function gatherChatContext(
 interface ChatModelOutput {
   answer: string;
   citedFiles: string[];
+  suggestions: string[];
 }
 
 /**
@@ -250,25 +252,27 @@ interface ChatModelOutput {
  * the whole thing — so the prompt has to make "I don't have that in what
  * was retrieved" a first-class, expected answer, not a last resort.
  */
-const REPO_CHAT_SYSTEM_PROMPT = `You are Aether's repository chat agent — a pair-programming assistant answering questions about one specific GitHub repository. On every turn you are given: the repo name, a README excerpt, a small set of source files retrieved by keyword search against the user's question (path + content, possibly truncated), and recent conversation history. This is a PARTIAL slice of the repo, not the whole codebase.
+const REPO_CHAT_SYSTEM_PROMPT = `You are Aether's repository chat agent — a senior software dev assistant answering questions about one specific GitHub repository. On every turn you are given: the repo name, a README excerpt, the complete list of all searchable file paths in the repo (repoTree), a small set of source files retrieved by keyword search against the user's question (path + content, possibly truncated), and recent conversation history. Keep in mind that repoTree shows you all existing files, even if the content of some files is not in the retrieved files.
 
 Respond with ONLY a single JSON object — no markdown code fences around the JSON itself, no commentary before or after. The JSON must match exactly this shape:
 
 {
   "answer": string,
-  "citedFiles": string[]
+  "citedFiles": string[],
+  "suggestions": string[]
 }
 
 Field rules:
 - "answer": a clear, direct answer in markdown. Use fenced code blocks (\`\`\`language) when quoting or writing code, and inline backticks for file paths, function names, and identifiers. Reference specific files by their exact path when explaining where something lives. Keep it as short as fully answering the question allows — no padding, no restating the question.
-- "citedFiles": the exact paths (copied verbatim from the provided context, or "README.md" if you used the README) of every file your answer actually draws on. Empty array if the answer doesn't rely on any specific provided file (e.g. a general or conversational question).
+- "citedFiles": the exact paths (copied verbatim from the provided context, or "README.md" if you used the README) of every file your answer actually draws on. Empty array if the answer doesn't rely on any specific provided file.
+- "suggestions": an array of at most 5 suggested follow-up questions, next features, or technical questions the user might want to ask next. These must be based on the recent assistant message and the repository structure.
 
 Hard rules:
-- Only describe code, functions, files, or behavior that are actually present in the provided context or clearly stated in the conversation history. Never invent a function name, file path, line of code, or behavior that wasn't shown to you.
-- If the provided context doesn't contain enough to answer confidently, say so plainly in "answer" — name what you looked for and didn't find, and suggest what the user could point you to (a specific file, folder, or more specific search term) instead of guessing. This is a normal, expected answer, not a failure.
-- Never claim a file exists or was checked if it isn't in the provided context.
-- If conversation history gives useful continuity (e.g. "that file" refers to something named earlier), use it — but ground any new factual claim in the current context, not memory of earlier turns alone.
-- Tone: a sharp, senior engineer pairing with the person — direct, technically precise, no marketing language, no exclamation points, no emoji, no unnecessary hedging ("might", "could possibly") when the context is clear.
+- Only describe code, functions, files, or behavior that are actually present in the provided context, the repoTree, or clearly stated in the conversation history. Never invent a function name, file path, line of code, or behavior that wasn't shown or listed.
+- If the provided context doesn't contain enough to answer confidently, but you see relevant file paths in repoTree, suggest that the user ask you to look at those specific files so they can be retrieved.
+- Never claim a file exists or was checked if it isn't in repoTree or the provided context.
+- If conversation history gives useful continuity, use it — but ground any new factual claim in the current context/history, not memory of earlier turns alone.
+- Tone: a sharp, senior engineer pairing with the person — direct, technically precise, no marketing language, no exclamation points, no emoji, no unnecessary hedging when the context is clear.
 - Output valid JSON only. Do not wrap it in triple backticks or add any surrounding text.`;
 
 function isValidChatOutput(x: any): x is ChatModelOutput {
@@ -276,7 +280,9 @@ function isValidChatOutput(x: any): x is ChatModelOutput {
     typeof x?.answer === "string" &&
     x.answer.trim().length > 0 &&
     Array.isArray(x?.citedFiles) &&
-    x.citedFiles.every((f: unknown) => typeof f === "string")
+    x.citedFiles.every((f: unknown) => typeof f === "string") &&
+    Array.isArray(x?.suggestions) &&
+    x.suggestions.every((s: unknown) => typeof s === "string")
   );
 }
 
@@ -290,6 +296,7 @@ async function callChatModel(
   const userPayload = {
     repo: context.repoFullName,
     readmeExcerpt: context.readmeExcerpt,
+    repoTree: context.repoTree,
     files: context.files, // [{ path, content }]
     conversationHistory: history.slice(-6),
     question: query,
@@ -312,6 +319,9 @@ async function callChatModel(
       if (!raw) throw new Error("Empty response from Groq");
 
       const parsed = JSON.parse(raw);
+      if (!parsed.suggestions) {
+        parsed.suggestions = [];
+      }
       if (!isValidChatOutput(parsed)) throw new Error("Chat response missing required fields");
 
       // Trust but verify — same pattern as onboardingController's stack
@@ -384,6 +394,7 @@ export async function sendRepoChatMessage(req: Request, res: Response) {
         content: result.answer,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         sources: result.citedFiles,
+        suggestions: result.suggestions,
       },
     });
   } catch (err) {
