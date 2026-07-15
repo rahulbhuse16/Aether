@@ -1,29 +1,29 @@
 // Path: src/pages/Onboarding.tsx
 //
-// First-run flow: connect GitHub, pick a repo, watch it get indexed, land
-// on the Dashboard with a real project. Step state is local (useState) —
-// it's only meaningful during this one flow, so it doesn't belong in Redux.
-// The result (the new project) is dispatched to the store once, at the end.
+// First-run flow: connect GitHub, pick a real repo, watch it actually get
+// indexed, land on the Dashboard with a real project. Step state is local
+// (useState) — it's only meaningful during this one flow, so it doesn't
+// belong in Redux. The result (the new project) is dispatched to the
+// store once, at the end, using exactly what the backend returns.
 
 import { useEffect, useState } from "react";
-import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { FaGithub } from "react-icons/fa";
-import { Check, ChevronRight, Loader2 } from "lucide-react";
+import { AlertCircle, Check, ChevronRight, Loader2, Lock, RefreshCw } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { addProject } from "../store/slices/projectsSlice";
 import { AmbientBackground } from "../components/AmbientBackGround";
-import { connectGithub } from "../services/github";
 import { loadUser } from "../services/auth";
+import {
+  fetchGithubRepos,
+  indexGithubRepo,
+  type GithubRepoListItem,
+  type IndexedProject,
+} from "../services/onboarding";
 
 type Step = 1 | 2 | 3;
-
-const MOCK_REPOS = [
-  { id: "r1", name: "aether/core", description: "Main application repository" },
-  { id: "r2", name: "aether/billing", description: "Billing and subscriptions service" },
-  { id: "r3", name: "acme/webapp", description: "Customer-facing web app" },
-];
 
 const INDEX_STEPS = [
   "cloning repository",
@@ -62,30 +62,23 @@ function StepIndicator({ step }: { step: Step }) {
 function ConnectStep({ onConnected }: { onConnected: () => void }) {
   const [loading, setLoading] = useState(false);
 
- async function handleConnect() {
+  async function handleConnect() {
     setLoading(true);
-    try{
-
-        //await connectGithub()
-        const userId=localStorage.getItem("userId") as string
-
-        window.location.href = `https://aether-api-y0ob.onrender.com/api/v1/github/connect?state=${userId}`;
-        onConnected()
-        await loadUser()
-        setLoading(false)
-
-
+    try {
+      const userId = localStorage.getItem("userId") as string;
+      // Full-page redirect to the GitHub OAuth flow — the browser leaves
+      // this page, so onConnected()/loadUser() below don't meaningfully
+      // run before that happens. Step 2 is reached instead via the
+      // `success=true` redirect param once GitHub sends the user back
+      // (see initialStep in the component below).
+      window.location.href = `https://aether-api-y0ob.onrender.com/api/v1/github/connect?state=${userId}`;
+      onConnected();
+      await loadUser();
+    } catch {
+      // Redirect failed to even start — let them try again.
+    } finally {
+      setLoading(false);
     }
-    catch(err){
-        setLoading(false)
-
-
-    }
-    finally{
-        setLoading(false)
-
-    }
-    
   }
 
   return (
@@ -118,12 +111,39 @@ function ConnectStep({ onConnected }: { onConnected: () => void }) {
   );
 }
 
+function RepoListSkeleton() {
+  return (
+    <div className="mt-6 space-y-2">
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="h-[58px] animate-pulse rounded-xl border border-white/[0.08] bg-white/[0.02]"
+        />
+      ))}
+    </div>
+  );
+}
+
 function SelectRepoStep({
   onSelected,
 }: {
-  onSelected: (repo: (typeof MOCK_REPOS)[number]) => void;
+  onSelected: (repo: GithubRepoListItem) => void;
 }) {
-  const [selected, setSelected] = useState<string | null>(null);
+  const [repos, setRepos] = useState<GithubRepoListItem[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<number | null>(null);
+
+  function load() {
+    setError(null);
+    setRepos(null);
+    fetchGithubRepos()
+      .then(setRepos)
+      .catch((err: Error) => setError(err.message));
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
 
   return (
     <div>
@@ -135,39 +155,88 @@ function SelectRepoStep({
         later.
       </p>
 
-      <div className="mt-6 space-y-2">
-        {MOCK_REPOS.map((repo) => (
+      {repos === null && !error && <RepoListSkeleton />}
+
+      {error && (
+        <div className="mt-6 rounded-xl border border-[#E8836B]/30 bg-[#E8836B]/[0.06] px-4 py-3.5 text-center">
+          <AlertCircle className="mx-auto h-4 w-4 text-[#E8836B]" />
+          <p className="mt-2 text-[13px] text-[#F4F3EF]">{error}</p>
           <button
-            key={repo.id}
-            onClick={() => setSelected(repo.id)}
-            className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors ${
-              selected === repo.id
-                ? "border-[#8B7FE8]/50 bg-[#8B7FE8]/[0.06]"
-                : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
-            }`}
+            onClick={load}
+            className="mx-auto mt-3 flex items-center justify-center gap-1.5 text-[12.5px] font-medium text-[#8B7FE8] hover:text-[#a599ec]"
           >
-            <div>
-              <p className="font-mono text-[13px] text-[#F4F3EF]">{repo.name}</p>
-              <p className="text-[12px] text-[#94969E]">{repo.description}</p>
-            </div>
-            <div
-              className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border ${
+            <RefreshCw className="h-3.5 w-3.5" />
+            Try again
+          </button>
+        </div>
+      )}
+
+      {repos && repos.length === 0 && (
+        <div className="mt-6 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-5 text-center">
+          <p className="text-[13.5px] text-[#94969E]">
+            No repositories found for this account. Grant Aether access to a
+            repo on GitHub, then refresh.
+          </p>
+          <button
+            onClick={load}
+            className="mx-auto mt-3 flex items-center justify-center gap-1.5 text-[12.5px] font-medium text-[#8B7FE8] hover:text-[#a599ec]"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Refresh
+          </button>
+        </div>
+      )}
+
+      {repos && repos.length > 0 && (
+        <div className="mt-6 max-h-[280px] space-y-2 overflow-y-auto pr-0.5">
+          {repos.map((repo) => (
+            <button
+              key={repo.id}
+              onClick={() => setSelected(repo.id)}
+              className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors ${
                 selected === repo.id
-                  ? "border-[#8B7FE8] bg-[#8B7FE8]"
-                  : "border-white/[0.2]"
+                  ? "border-[#8B7FE8]/50 bg-[#8B7FE8]/[0.06]"
+                  : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"
               }`}
             >
-              {selected === repo.id && (
-                <Check className="h-3 w-3 text-[#0A0B0D]" />
-              )}
-            </div>
-          </button>
-        ))}
-      </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className="truncate font-mono text-[13px] text-[#F4F3EF]">
+                    {repo.name}
+                  </p>
+                  {repo.private && (
+                    <Lock className="h-3 w-3 flex-shrink-0 text-[#55575F]" />
+                  )}
+                </div>
+                <p className="truncate text-[12px] text-[#94969E]">
+                  {repo.description || "No description"}
+                  {repo.openIssues > 0 && (
+                    <span className="text-[#55575F]">
+                      {" "}
+                      · {repo.openIssues} open issue{repo.openIssues === 1 ? "" : "s"}
+                    </span>
+                  )}
+                </p>
+              </div>
+              <div
+                className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border ${
+                  selected === repo.id
+                    ? "border-[#8B7FE8] bg-[#8B7FE8]"
+                    : "border-white/[0.2]"
+                }`}
+              >
+                {selected === repo.id && (
+                  <Check className="h-3 w-3 text-[#0A0B0D]" />
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
 
       <button
         onClick={() => {
-          const repo = MOCK_REPOS.find((r) => r.id === selected);
+          const repo = repos?.find((r) => r.id === selected);
           if (repo) onSelected(repo);
         }}
         disabled={!selected}
@@ -181,29 +250,81 @@ function SelectRepoStep({
 }
 
 function IndexingStep({
-  repoName,
+  repo,
   onDone,
+  onBack,
 }: {
-  repoName: string;
-  onDone: () => void;
+  repo: GithubRepoListItem;
+  onDone: (project: IndexedProject) => void;
+  onBack: () => void;
 }) {
   const [lineIndex, setLineIndex] = useState(0);
+  const [animationDone, setAnimationDone] = useState(false);
+  const [result, setResult] = useState<IndexedProject | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  // The real work — runs once, independent of the display animation below.
+  // Whichever finishes last (the fetch or the minimum-perceived-progress
+  // animation) is what actually triggers onDone, so indexing never looks
+  // "complete" before the project genuinely exists in the database, and
+  // a fast response doesn't make the step flash by instantly.
+  useEffect(() => {
+    let cancelled = false;
+    indexGithubRepo(repo.id)
+      .then((project) => {
+        if (!cancelled) setResult(project);
+      })
+      .catch((err: Error) => {
+        if (!cancelled) setApiError(err.message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [repo.id]);
 
   useEffect(() => {
+    if (apiError) return;
     if (lineIndex >= INDEX_STEPS.length) {
-      const t = setTimeout(onDone, 500);
-      return () => clearTimeout(t);
+      setAnimationDone(true);
+      return;
     }
     const t = setTimeout(() => setLineIndex((i) => i + 1), 550);
     return () => clearTimeout(t);
-  }, [lineIndex, onDone]);
+  }, [lineIndex, apiError]);
+
+  useEffect(() => {
+    if (animationDone && result) {
+      const t = setTimeout(() => onDone(result), 450);
+      return () => clearTimeout(t);
+    }
+  }, [animationDone, result, onDone]);
+
+  if (apiError) {
+    return (
+      <div className="text-center">
+        <h2 className="text-[19px] font-medium tracking-tight text-[#F4F3EF]">
+          Indexing failed
+        </h2>
+        <div className="mx-auto mt-4 max-w-xs rounded-xl border border-[#E8836B]/30 bg-[#E8836B]/[0.06] px-4 py-3.5">
+          <AlertCircle className="mx-auto h-4 w-4 text-[#E8836B]" />
+          <p className="mt-2 text-[13px] text-[#F4F3EF]">{apiError}</p>
+        </div>
+        <button
+          onClick={onBack}
+          className="mx-auto mt-5 flex items-center justify-center gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-5 py-2 text-[13.5px] font-medium text-[#F4F3EF] transition-colors hover:bg-white/[0.05]"
+        >
+          Back to repositories
+        </button>
+      </div>
+    );
+  }
 
   const progress = Math.min(100, (lineIndex / INDEX_STEPS.length) * 100);
 
   return (
     <div className="text-center">
       <h2 className="text-[19px] font-medium tracking-tight text-[#F4F3EF]">
-        Indexing {repoName}
+        Indexing {repo.name}
       </h2>
       <p className="mx-auto mt-2 max-w-xs text-[13.5px] leading-relaxed text-[#94969E]">
         This only happens once — Aether keeps the index in sync after this.
@@ -237,32 +358,23 @@ function IndexingStep({
 }
 
 export default function Onboarding() {
-  
-
   const [searchParams] = useSearchParams();
 
-  const authState=useAppSelector(state=>state.auth.user)
+  const authState = useAppSelector((state) => state.auth.user);
 
   const success = searchParams.get("success");
 
-  const initialStep=(success==='true' || authState?.githubToken) ? 2 : 1
+  const initialStep = success === "true" || authState?.githubToken ? 2 : 1;
 
   const [step, setStep] = useState<Step>(initialStep);
-  const [selectedRepo, setSelectedRepo] = useState<(typeof MOCK_REPOS)[number] | null>(null);
+  const [selectedRepo, setSelectedRepo] = useState<GithubRepoListItem | null>(null);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
-  function handleIndexingDone() {
-    if (!selectedRepo) return;
-    dispatch(
-      addProject({
-        id: selectedRepo.id,
-        name: selectedRepo.name.split("/")[1],
-        repo: selectedRepo.name,
-        openTasks: 0,
-        lastActivity: "just now",
-      })
-    );
+  function handleIndexingDone(project: IndexedProject) {
+    // Dispatch exactly what the backend persisted — no client-side
+    // reshaping, so the store matches Mongo from the first render.
+    dispatch(addProject(project));
     navigate("/dashboard");
   }
 
@@ -303,8 +415,12 @@ export default function Onboarding() {
                 )}
                 {step === 3 && selectedRepo && (
                   <IndexingStep
-                    repoName={selectedRepo.name}
+                    repo={selectedRepo}
                     onDone={handleIndexingDone}
+                    onBack={() => {
+                      setSelectedRepo(null);
+                      setStep(2);
+                    }}
                   />
                 )}
               </motion.div>

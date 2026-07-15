@@ -1,11 +1,12 @@
-import { useCallback } from "react";
+import { useCallback, useState, type JSX } from "react";
 import { motion } from "framer-motion";
-import { Send, Bot, User, Sparkles } from "lucide-react";
+import { AlertCircle, Bot, FileCode2, Send, Sparkles, User } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { GlassCard } from "../components/ui/GlassCard";
 import { Button } from "../components/ui/Button";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { setInput, addMessage, setTyping } from "../store/slices/chatSlice";
+import { sendRepoChatMessage, type ChatHistoryTurn } from "../services/chatwithRepo";
 
 const SUGGESTIONS = [
   "Where is login implemented?",
@@ -14,12 +15,43 @@ const SUGGESTIONS = [
   "What tests cover the auth module?",
 ];
 
-const MOCK_RESPONSES: Record<string, string> = {
-  "where is login implemented":
-    "Login is implemented in `src/auth/LoginPage.tsx` (UI) and `src/api/auth.ts` (API calls). The JWT middleware lives in `src/middleware/auth.ts`. AuthProvider wraps the app in `src/providers/AuthProvider.tsx`.",
-  default:
-    "Based on your codebase index, this spans 3 modules: `auth/`, `api/`, and `middleware/`. The main entry point is `AuthProvider.tsx`. Would you like me to generate a migration plan or open the relevant files?",
-};
+/**
+ * Splits assistant markdown on ```lang fenced code blocks so code renders
+ * in a monospace block instead of running together with prose. Anything
+ * this doesn't recognize just falls through as plain text — good enough
+ * for chat content without pulling in a full markdown renderer.
+ */
+function renderContent(content: string) {
+  const parts = content.split(/```(\w*)\n?([\s\S]*?)```/g);
+  const nodes: JSX.Element[] = [];
+
+  for (let i = 0; i < parts.length; i += 3) {
+    const text = parts[i];
+    const lang = parts[i + 1];
+    const code = parts[i + 2];
+
+    if (text) {
+      nodes.push(
+        <p key={`t-${i}`} className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-[#F4F3EF]">
+          {text.trim()}
+        </p>
+      );
+    }
+    if (code !== undefined) {
+      nodes.push(
+        <pre
+          key={`c-${i}`}
+          className="overflow-x-auto rounded-lg border border-white/[0.08] bg-black/30 px-3 py-2.5 font-mono text-[12px] text-[#B8E8D4]"
+        >
+          {lang && <div className="mb-1.5 text-[10.5px] uppercase tracking-wide text-[#55575F]">{lang}</div>}
+          <code>{code.replace(/\n$/, "")}</code>
+        </pre>
+      );
+    }
+  }
+
+  return nodes;
+}
 
 export default function RepositoryChat() {
   const dispatch = useAppDispatch();
@@ -28,37 +60,47 @@ export default function RepositoryChat() {
     s.projects.projects.find((p) => p.id === s.projects.currentProjectId)
   );
 
+  const projects=useAppSelector((s)=>s.projects)
+
+  console.log("p",projects)
+
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
+
   const sendMessage = useCallback(
-    (text: string) => {
-      if (!text.trim()) return;
-      const userMsg = {
-        id: `m-${Date.now()}`,
-        role: "user" as const,
-        content: text.trim(),
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      };
-      dispatch(addMessage(userMsg));
+    async (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed || !currentProject) return;
+
+      setSendError(null);
+      setLastFailedMessage(null);
+
+      const history: ChatHistoryTurn[] = messages
+        .slice(-6)
+        .map((m) => ({ role: m.role, content: m.content }));
+
+      dispatch(
+        addMessage({
+          id: `m-${Date.now()}`,
+          role: "user",
+          content: trimmed,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        })
+      );
       dispatch(setInput(""));
       dispatch(setTyping(true));
 
-      setTimeout(() => {
-        const key = text.toLowerCase();
-        const matchKey = Object.keys(MOCK_RESPONSES).find(
-          (k) => k !== "default" && key.includes(k)
-        );
-        const response = MOCK_RESPONSES[matchKey ?? "default"];
-        dispatch(
-          addMessage({
-            id: `m-${Date.now()}-ai`,
-            role: "assistant",
-            content: response,
-            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          })
-        );
+      try {
+        const reply = await sendRepoChatMessage(projects.currentRepoId, trimmed, history);
+        dispatch(addMessage(reply));
+      } catch (err) {
+        setSendError((err as Error).message);
+        setLastFailedMessage(trimmed);
+      } finally {
         dispatch(setTyping(false));
-      }, 1200);
+      }
     },
-    [dispatch]
+    [dispatch, messages, currentProject]
   );
 
   return (
@@ -70,8 +112,8 @@ export default function RepositoryChat() {
           className="mb-4"
         >
           <p className="text-[13px] text-[#94969E]">
-            Indexed: <span className="text-[#F4F3EF]">{currentProject?.repo}</span> · RAG-powered
-            codebase understanding
+            Indexed: <span className="text-[#F4F3EF]">{currentProject?.repo ?? "no repository selected"}</span> ·
+            RAG-powered codebase understanding
           </p>
         </motion.div>
 
@@ -96,14 +138,33 @@ export default function RepositoryChat() {
                   )}
                 </div>
                 <div
-                  className={`max-w-[80%] rounded-xl px-4 py-3 ${
+                  className={`max-w-[80%] space-y-2 rounded-xl px-4 py-3 ${
                     msg.role === "assistant"
                       ? "border border-white/[0.08] bg-white/[0.03]"
                       : "bg-[#8B7FE8]/15"
                   }`}
                 >
-                  <p className="text-[13.5px] leading-relaxed text-[#F4F3EF]">{msg.content}</p>
-                  <span className="mt-1 block text-[11px] text-[#55575F]">{msg.timestamp}</span>
+                  {msg.role === "assistant" ? (
+                    renderContent(msg.content)
+                  ) : (
+                    <p className="text-[13.5px] leading-relaxed text-[#F4F3EF]">{msg.content}</p>
+                  )}
+
+                  {"sources" in msg && (msg as { sources?: string[] }).sources?.length ? (
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {(msg as { sources?: string[] }).sources!.map((path) => (
+                        <span
+                          key={path}
+                          className="flex items-center gap-1 rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 font-mono text-[10.5px] text-[#94969E]"
+                        >
+                          <FileCode2 className="h-3 w-3 text-[#22A67D]" />
+                          {path}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <span className="block text-[11px] text-[#55575F]">{msg.timestamp}</span>
                 </div>
               </div>
             ))}
@@ -128,13 +189,31 @@ export default function RepositoryChat() {
             )}
           </div>
 
+          {sendError && (
+            <div className="mx-4 mb-3 flex items-start gap-2 rounded-lg border border-[#E8836B]/30 bg-[#E8836B]/[0.06] px-3.5 py-2.5">
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-[#E8836B]" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[12.5px] text-[#F4F3EF]">{sendError}</p>
+                {lastFailedMessage && (
+                  <button
+                    onClick={() => sendMessage(lastFailedMessage)}
+                    className="mt-1 text-[12px] font-medium text-[#8B7FE8] hover:text-[#a599ec]"
+                  >
+                    Retry
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="border-t border-white/[0.06] p-4">
             <div className="mb-3 flex flex-wrap gap-2">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
                   onClick={() => sendMessage(s)}
-                  className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.02] px-3 py-1 text-[12px] text-[#94969E] transition-colors hover:border-[#8B7FE8]/30 hover:text-[#F4F3EF]"
+                  disabled={!currentProject || isTyping}
+                  className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.02] px-3 py-1 text-[12px] text-[#94969E] transition-colors hover:border-[#8B7FE8]/30 hover:text-[#F4F3EF] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Sparkles className="h-3 w-3 text-[#22A67D]" />
                   {s}
@@ -151,10 +230,19 @@ export default function RepositoryChat() {
               <input
                 value={input}
                 onChange={(e) => dispatch(setInput(e.target.value))}
-                placeholder="Ask about your codebase..."
-                className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-[13.5px] text-[#F4F3EF] placeholder:text-[#55575F] outline-none focus:border-[#8B7FE8]/40"
+                placeholder={
+                  currentProject
+                    ? "Ask about your codebase..."
+                    : "Select a project to start chatting"
+                }
+                disabled={!currentProject}
+                className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-[13.5px] text-[#F4F3EF] placeholder:text-[#55575F] outline-none focus:border-[#8B7FE8]/40 disabled:opacity-50"
               />
-              <Button type="submit" variant="primary" disabled={!input.trim() || isTyping}>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={!input.trim() || isTyping || !currentProject}
+              >
                 <Send className="h-4 w-4" />
               </Button>
             </form>

@@ -5,16 +5,17 @@ import { fetchUserProjects } from "../../services/dashboard";
 interface ProjectsState {
   projects: Project[];
   currentProjectId: string | null;
+  currentRepoId:string | null
+
 }
 
 const initialState: ProjectsState = {
   projects: [
-    { id: "p1", name: "Aether Core", repo: "aether/core", openTasks: 6, lastActivity: "2h ago" },
-    { id: "p2", name: "Billing Service", repo: "aether/billing", openTasks: 2, lastActivity: "1d ago" },
-    { id: "p3", name: "CRM", repo: "aether/crm", openTasks: 4, lastActivity: "3h ago" },
-    { id: "p4", name: "Smart Lock", repo: "aether/smart-lock", openTasks: 1, lastActivity: "5h ago" },
+   
   ],
-  currentProjectId: "p1",
+  currentProjectId: "",
+  currentRepoId:""
+  
 };
 
 const projectsSlice = createSlice({
@@ -28,6 +29,10 @@ const projectsSlice = createSlice({
       state.projects.push(action.payload);
       state.currentProjectId = action.payload.id;
     },
+    setCurrentRepoId(state, action: PayloadAction<string>) {
+      console.log(action.payload)
+      state.currentRepoId = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder.addCase(fetchUserProjects.fulfilled, (state, action) => {
@@ -37,5 +42,5 @@ const projectsSlice = createSlice({
 
 });
 
-export const { setCurrentProject, addProject } = projectsSlice.actions;
+export const { setCurrentProject, addProject,setCurrentRepoId } = projectsSlice.actions;
 export default projectsSlice.reducer;

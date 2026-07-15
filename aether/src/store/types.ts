@@ -13,6 +13,7 @@ export interface Project {
   repo: string;
   openTasks: number;
   lastActivity: string;
+  projectId : string
 }
 
 export interface Task {

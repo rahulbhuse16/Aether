@@ -30,12 +30,13 @@ import {
   Plus,
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { setCurrentProject } from "../store/slices/projectsSlice";
+import { setCurrentProject, setCurrentRepoId } from "../store/slices/projectsSlice";
 import { toggleSidebar } from "../store/slices/uiSlice";
 import { Logo } from "./Logo";
 import { Notifications } from "./Notifications";
 import { fetchUserProjects } from "../services/dashboard";
 import { logOut } from "../services/auth";
+import { setConnectedRepo } from "../store/slices/deploymentSlice";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -137,6 +138,7 @@ export function AppShell({
                   key={p.id}
                   onClick={() => {
                     dispatch(setCurrentProject(p.id));
+                    dispatch(setCurrentRepoId(p.projectId))
                     setProjectMenuOpen(false);
                   }}
                   className={`flex w-full flex-col items-start px-3 py-2 text-left transition-colors hover:bg-white/[0.04] ${p.id === currentProjectId ? "bg-white/[0.03]" : ""
