@@ -117,7 +117,9 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
+    if(currentProjectId){
     loadDailyDigest()
+    }
 
   }, [currentProjectId])
 
