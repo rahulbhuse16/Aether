@@ -1,0 +1,9 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const documentation_1 = require("../controller/documentation");
+const docsRouter = (0, express_1.Router)();
+docsRouter.post("/generate", documentation_1.generateDocs);
+docsRouter.post("/regenerate", documentation_1.regenerateDoc);
+docsRouter.get("/latest", documentation_1.getLatestDocsSession);
+exports.default = docsRouter;

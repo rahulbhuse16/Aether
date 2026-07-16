@@ -15,16 +15,23 @@ const env_1 = require("../config/env");
 // -----------------------------------------------------------------------------
 // Config
 // -----------------------------------------------------------------------------
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 const GITHUB_API = "https://api.github.com";
-// Guardrails so we never blow the model's context window
-const MAX_FILES = 45;
-const MAX_FILE_CHARS = 6000; // per-file truncation
-const MAX_TOTAL_CHARS = 90000; // total repo context budget
-// Consistency guardrails for the AI call itself
+// Guardrails so we never blow the model's context window.
+// NOTE: these defaults are sized for Groq's free "on_demand" tier, which as of
+// writing caps llama-3.3-70b-versatile at 12,000 tokens/minute (prompt +
+// completion combined). ~4 characters ≈ 1 token for English/code text, so
+// keep (system prompt + file context + completion budget) comfortably under
+// that. If you're on Dev Tier or a higher tier, raise these via env vars.
+const MAX_FILES = Number(process.env.BUGFINDER_MAX_FILES) || 18;
+const MAX_FILE_CHARS = Number(process.env.BUGFINDER_MAX_FILE_CHARS) || 2500; // per-file truncation
+const MAX_TOTAL_CHARS = Number(process.env.BUGFINDER_MAX_TOTAL_CHARS) || 22000; // total repo context budget (~5.5k tokens)
+// Consistency + rate-limit guardrails for the AI call itself
 const GROQ_TEMPERATURE = 0.15; // low temperature — this is an analysis task, not creative writing
 const GROQ_SEED = 42; // fixed seed so repeated runs on the same context are reproducible
-const GROQ_MAX_RETRIES = 2; // retries on malformed/incomplete JSON before giving up
+const GROQ_MAX_RETRIES = 2; // retries on malformed JSON / rate-limit before giving up
+const GROQ_COMPLETION_TOKENS = Number(process.env.GROQ_COMPLETION_TOKENS) || 3500;
+const GROQ_SHRINK_FACTOR = 0.6; // how much we cut the context by on a 413 retry
 const RELEVANT_EXTENSIONS = [
     ".ts",
     ".tsx",
@@ -106,7 +113,7 @@ You must output STRICT JSON and nothing else, matching exactly this schema:
   ]
 }
 Never output markdown. Never output explanations. Never output conversational text outside the JSON object. Return only valid JSON.
-Every string value must be valid JSON (escape newlines as \\n, quotes as \\", etc). Do not include any keys other than the ones defined in the schema above. "critical", "high", "medium", and "low" must equal the count of findings you return with that exact severity.`;
+Every string value must be valid JSON (escape newlines as \\n, quotes as \\", etc). Do not include any keys other than the ones defined in the schema above. "critical", "high", "medium", and "low" must equal the count of findings you return with that exact severity. "summary" must always be a non-empty string, even if you found zero issues.`;
 // -----------------------------------------------------------------------------
 // Groq client
 // -----------------------------------------------------------------------------
@@ -258,6 +265,7 @@ function isValidAiResponse(value) {
     return (!!value &&
         typeof value.repositoryHealthScore === "number" &&
         typeof value.summary === "string" &&
+        value.summary.trim().length > 0 &&
         Array.isArray(value.findings) &&
         value.findings.every((f) => f &&
             typeof f.title === "string" &&
@@ -265,16 +273,44 @@ function isValidAiResponse(value) {
             typeof f.file === "string" &&
             typeof f.description === "string"));
 }
+/** True for Groq's TPM/context-too-large rate-limit response (HTTP 413 / code "rate_limit_exceeded"). */
+function isRequestTooLargeError(err) {
+    const status = err?.status ?? err?.response?.status;
+    const code = err?.error?.error?.code ?? err?.code;
+    const message = err?.message || "";
+    return (status === 413 ||
+        code === "rate_limit_exceeded" ||
+        /request too large|tokens per minute/i.test(message));
+}
+/**
+ * Cuts down the "Repository context" portion of the prompt (the large part)
+ * by `factor`, leaving the repo/branch/focus/stack-trace header lines intact.
+ * Used when Groq rejects a request as too large for the current TPM budget.
+ */
+function shrinkPrompt(prompt, factor) {
+    const marker = "\nRepository context (";
+    const markerIndex = prompt.indexOf(marker);
+    if (markerIndex === -1) {
+        return prompt.slice(0, Math.floor(prompt.length * factor));
+    }
+    const header = prompt.slice(0, markerIndex);
+    const contextSection = prompt.slice(markerIndex);
+    const shrunkContext = contextSection.slice(0, Math.floor(contextSection.length * factor));
+    return `${header}${shrunkContext}\n/* ...context truncated further to fit the token budget... */`;
+}
 /**
  * Calls Groq via the official groq-sdk client. Uses a low, fixed temperature
  * plus a fixed seed so repeated analyses of the same repo context stay
- * consistent, forced JSON response formatting, and a small retry loop that
- * re-prompts the model if it returns malformed or incomplete JSON.
+ * consistent, forced JSON response formatting, and a retry loop that:
+ *   - re-prompts the model if it returns malformed/incomplete JSON, and
+ *   - shrinks the context and retries if Groq rejects the request as too
+ *     large for the account's tokens-per-minute limit (HTTP 413).
  */
 async function callGroq(userPrompt) {
     if (!env_1.ENV.GROQ_API_KEY) {
         throw new Error("GROQ_API_KEY is not configured on the server");
     }
+    let currentPrompt = userPrompt;
     let lastError = null;
     for (let attempt = 1; attempt <= GROQ_MAX_RETRIES; attempt++) {
         try {
@@ -282,15 +318,15 @@ async function callGroq(userPrompt) {
                 model: GROQ_MODEL,
                 temperature: GROQ_TEMPERATURE,
                 seed: GROQ_SEED,
-                max_tokens: 8000,
+                max_tokens: GROQ_COMPLETION_TOKENS,
                 response_format: { type: "json_object" },
                 messages: [
                     { role: "system", content: SYSTEM_INSTRUCTION },
                     {
                         role: "user",
                         content: attempt === 1
-                            ? userPrompt
-                            : `${userPrompt}\n\nYour previous response was not valid JSON matching the required schema. Return ONLY the raw JSON object this time — no markdown, no commentary, no missing fields.`,
+                            ? currentPrompt
+                            : `${currentPrompt}\n\nYour previous response was not valid JSON matching the required schema, or included an empty "summary". Return ONLY the raw JSON object this time — no markdown, no commentary, no missing/empty fields.`,
                     },
                 ],
             });
@@ -303,6 +339,13 @@ async function callGroq(userPrompt) {
         }
         catch (err) {
             lastError = err;
+            if (isRequestTooLargeError(err)) {
+                console.warn(`[bugfinder] Groq call attempt ${attempt} failed: request too large for the current TPM limit. Shrinking context and retrying.`);
+                currentPrompt = shrinkPrompt(currentPrompt, GROQ_SHRINK_FACTOR);
+                lastError = new Error("Repository context is too large for the current Groq plan's tokens-per-minute limit, even after truncation. " +
+                    "Try a smaller focusPath, or raise BUGFINDER_MAX_TOTAL_CHARS / GROQ_COMPLETION_TOKENS after upgrading your Groq tier.");
+                continue;
+            }
             console.warn(`[bugfinder] Groq call attempt ${attempt} failed:`, lastError.message);
         }
     }
@@ -435,6 +478,7 @@ async function analyzeRepository(req, res) {
             aiResult = await callGroq(userPrompt);
         }
         catch (err) {
+            const failureMessage = err.message || "AI analysis failed";
             const failed = await bug_analysis_1.BugAnalysis.create({
                 user: userId,
                 repoUrl: htmlUrl,
@@ -444,7 +488,9 @@ async function analyzeRepository(req, res) {
                 focusPath: focusPath || "",
                 stackTraceContext: stackTrace || "",
                 repositoryHealthScore: 0,
-                summary: "",
+                // `summary` is required in the schema — an empty string fails that
+                // validator, so a failed run must still carry a non-empty message.
+                summary: `Analysis failed: ${failureMessage}`.slice(0, 2000),
                 critical: 0,
                 high: 0,
                 medium: 0,
@@ -454,11 +500,11 @@ async function analyzeRepository(req, res) {
                 filesSkipped,
                 model: GROQ_MODEL,
                 status: "failed",
-                errorMessage: err.message,
+                errorMessage: failureMessage,
             });
             return res.status(502).json({
                 success: false,
-                message: "AI analysis failed",
+                message: failureMessage,
                 report: serializeReport(failed),
             });
         }
@@ -485,7 +531,7 @@ async function analyzeRepository(req, res) {
             repositoryHealthScore: typeof aiResult.repositoryHealthScore === "number"
                 ? aiResult.repositoryHealthScore
                 : 0,
-            summary: aiResult.summary || "",
+            summary: aiResult.summary?.trim() || "No summary was returned by the model.",
             critical: counts.critical,
             high: counts.high,
             medium: counts.medium,
