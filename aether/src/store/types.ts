@@ -106,6 +106,7 @@ export interface VoiceCommand {
   transcript: string;
   status: "pending" | "building" | "complete";
   output?: string;
+  generatedFiles?: string[];
 }
 
 export interface Integration {
