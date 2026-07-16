@@ -13,6 +13,7 @@ const dashboard_1 = __importDefault(require("./router/dashboard"));
 const chat_1 = __importDefault(require("./router/chat"));
 const code_review_1 = __importDefault(require("./router/code-review"));
 const api_agent_1 = __importDefault(require("./router/api-agent"));
+const bug_finder_1 = __importDefault(require("./router/bug-finder"));
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
@@ -24,6 +25,7 @@ app.use('/api/v1/dashboard', dashboard_1.default);
 app.use('/api/v1/chat', chat_1.default);
 app.use('/api/v1/code-review', code_review_1.default);
 app.use('/api/v1/api-agent', api_agent_1.default);
+app.use('/api/v1/bug-finder', bug_finder_1.default);
 (0, connectDB_1.connectDB)();
 app.listen(5000, () => {
     console.log("running on port 5000");
