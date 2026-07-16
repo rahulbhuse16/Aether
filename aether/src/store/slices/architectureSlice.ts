@@ -13,16 +13,7 @@ interface ArchitectureState {
 }
 
 const UBER_NODES: ArchitectureNode[] = [
-  { id: "n1", label: "React Frontend", type: "frontend" },
-  { id: "n2", label: "API Gateway", type: "gateway" },
-  { id: "n3", label: "Auth Service", type: "service" },
-  { id: "n4", label: "Driver Service", type: "service" },
-  { id: "n5", label: "Ride Service", type: "service" },
-  { id: "n6", label: "Payment Service", type: "service" },
-  { id: "n7", label: "Notification Service", type: "service" },
-  { id: "n8", label: "Redis", type: "cache" },
-  { id: "n9", label: "Kafka", type: "queue" },
-  { id: "n10", label: "Postgres", type: "database" },
+  
 ];
 
 const DEFAULT_SUGGESTIONS = [

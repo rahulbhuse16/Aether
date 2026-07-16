@@ -10,7 +10,7 @@ interface ApiAgentState {
 }
 
 const initialState: ApiAgentState = {
-  swaggerUrl: "https://api.example.com/swagger.json",
+  swaggerUrl: "https://petstore3.swagger.io/api/v3/openapi.json",
   specTitle: null,
   isGenerating: false,
   error: null,

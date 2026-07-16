@@ -155,6 +155,8 @@ export function AppShell({
                     dispatch(setCurrentProject(p.id));
                     dispatch(setCurrentRepoId(p.projectId))
                     setProjectMenuOpen(false);
+                    dispatch(setConnectedRepo(p.repo))
+
                   }}
                   className={`flex w-full flex-col items-start px-3 py-2 text-left transition-colors hover:bg-white/[0.04] ${p.id === currentProjectId ? "bg-white/[0.03]" : ""
                     }`}
