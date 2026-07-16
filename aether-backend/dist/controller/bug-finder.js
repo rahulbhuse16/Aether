@@ -8,19 +8,23 @@ exports.getReports = getReports;
 exports.getReportById = getReportById;
 exports.deleteReport = deleteReport;
 const axios_1 = __importDefault(require("axios"));
+const groq_sdk_1 = __importDefault(require("groq-sdk"));
 const user_1 = require("../models/user"); // adjust path to your actual User model
 const bug_analysis_1 = require("../models/bug-analysis");
 const env_1 = require("../config/env");
 // -----------------------------------------------------------------------------
 // Config
 // -----------------------------------------------------------------------------
-const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+const GROQ_MODEL = "llama-3.3-70b-versatile";
 const GITHUB_API = "https://api.github.com";
 // Guardrails so we never blow the model's context window
 const MAX_FILES = 45;
 const MAX_FILE_CHARS = 6000; // per-file truncation
 const MAX_TOTAL_CHARS = 90000; // total repo context budget
+// Consistency guardrails for the AI call itself
+const GROQ_TEMPERATURE = 0.15; // low temperature — this is an analysis task, not creative writing
+const GROQ_SEED = 42; // fixed seed so repeated runs on the same context are reproducible
+const GROQ_MAX_RETRIES = 2; // retries on malformed/incomplete JSON before giving up
 const RELEVANT_EXTENSIONS = [
     ".ts",
     ".tsx",
@@ -101,7 +105,12 @@ You must output STRICT JSON and nothing else, matching exactly this schema:
     }
   ]
 }
-Never output markdown. Never output explanations. Never output conversational text outside the JSON object. Return only valid JSON.`;
+Never output markdown. Never output explanations. Never output conversational text outside the JSON object. Return only valid JSON.
+Every string value must be valid JSON (escape newlines as \\n, quotes as \\", etc). Do not include any keys other than the ones defined in the schema above. "critical", "high", "medium", and "low" must equal the count of findings you return with that exact severity.`;
+// -----------------------------------------------------------------------------
+// Groq client
+// -----------------------------------------------------------------------------
+const groq = new groq_sdk_1.default({ apiKey: env_1.ENV.GROQ_API_KEY });
 // -----------------------------------------------------------------------------
 // Helpers: GitHub
 // -----------------------------------------------------------------------------
@@ -219,43 +228,85 @@ function formatContextForModel(files) {
         .join("\n\n");
 }
 // -----------------------------------------------------------------------------
-// Helpers: Groq
+// Helpers: Groq (via groq-sdk)
 // -----------------------------------------------------------------------------
-async function callGroq(userPrompt) {
-    const apiKey = env_1.ENV.GROQ_API_KEY;
-    if (!apiKey) {
-        throw new Error("GROQ_API_KEY is not configured on the server");
-    }
-    const { data } = await axios_1.default.post(GROQ_API_URL, {
-        model: GROQ_MODEL,
-        temperature: 0.2,
-        max_tokens: 8000,
-        response_format: { type: "json_object" },
-        messages: [
-            { role: "system", content: SYSTEM_INSTRUCTION },
-            { role: "user", content: userPrompt },
-        ],
-    }, {
-        headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-        },
-        timeout: 120000,
-    });
-    const raw = data?.choices?.[0]?.message?.content;
-    if (!raw) {
-        throw new Error("Groq returned an empty response");
-    }
-    let parsed;
+/** Parses model output defensively — strips stray fences if the model adds them anyway. */
+function safeParseJson(raw) {
+    const cleaned = raw
+        .trim()
+        .replace(/^```(json)?/i, "")
+        .replace(/```$/, "")
+        .trim();
     try {
-        parsed = JSON.parse(raw);
+        return JSON.parse(cleaned);
     }
     catch {
-        // Defensive: strip accidental code fences if the model added them anyway.
-        const stripped = raw.replace(/```json|```/g, "").trim();
-        parsed = JSON.parse(stripped);
+        const match = cleaned.match(/\{[\s\S]*\}/);
+        if (match) {
+            try {
+                return JSON.parse(match[0]);
+            }
+            catch {
+                return null;
+            }
+        }
+        return null;
     }
-    return parsed;
+}
+/** Structural check — makes sure the model actually followed the schema before we trust it. */
+function isValidAiResponse(value) {
+    return (!!value &&
+        typeof value.repositoryHealthScore === "number" &&
+        typeof value.summary === "string" &&
+        Array.isArray(value.findings) &&
+        value.findings.every((f) => f &&
+            typeof f.title === "string" &&
+            typeof f.severity === "string" &&
+            typeof f.file === "string" &&
+            typeof f.description === "string"));
+}
+/**
+ * Calls Groq via the official groq-sdk client. Uses a low, fixed temperature
+ * plus a fixed seed so repeated analyses of the same repo context stay
+ * consistent, forced JSON response formatting, and a small retry loop that
+ * re-prompts the model if it returns malformed or incomplete JSON.
+ */
+async function callGroq(userPrompt) {
+    if (!env_1.ENV.GROQ_API_KEY) {
+        throw new Error("GROQ_API_KEY is not configured on the server");
+    }
+    let lastError = null;
+    for (let attempt = 1; attempt <= GROQ_MAX_RETRIES; attempt++) {
+        try {
+            const completion = await groq.chat.completions.create({
+                model: GROQ_MODEL,
+                temperature: GROQ_TEMPERATURE,
+                seed: GROQ_SEED,
+                max_tokens: 8000,
+                response_format: { type: "json_object" },
+                messages: [
+                    { role: "system", content: SYSTEM_INSTRUCTION },
+                    {
+                        role: "user",
+                        content: attempt === 1
+                            ? userPrompt
+                            : `${userPrompt}\n\nYour previous response was not valid JSON matching the required schema. Return ONLY the raw JSON object this time — no markdown, no commentary, no missing fields.`,
+                    },
+                ],
+            });
+            const raw = completion.choices[0]?.message?.content || "";
+            const parsed = safeParseJson(raw);
+            if (isValidAiResponse(parsed)) {
+                return parsed;
+            }
+            lastError = new Error("Groq returned a response that did not match the expected schema");
+        }
+        catch (err) {
+            lastError = err;
+            console.warn(`[bugfinder] Groq call attempt ${attempt} failed:`, lastError.message);
+        }
+    }
+    throw lastError || new Error("Groq returned an empty or invalid response");
 }
 // -----------------------------------------------------------------------------
 // Mapping: AI response -> frontend-compatible JSON
