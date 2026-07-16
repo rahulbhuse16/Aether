@@ -17,6 +17,8 @@ const bug_finder_1 = __importDefault(require("./router/bug-finder"));
 const architecture_1 = __importDefault(require("./router/architecture"));
 const deployment_1 = __importDefault(require("./router/deployment"));
 const documentation_1 = __importDefault(require("./router/documentation"));
+const voice_engineer_1 = __importDefault(require("./router/voice-engineer"));
+const notification_1 = __importDefault(require("./router/notification"));
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
@@ -32,6 +34,8 @@ app.use('/api/v1/bug-finder', bug_finder_1.default);
 app.use('/api/v1/architecture', architecture_1.default);
 app.use('/api/v1/deployment', deployment_1.default);
 app.use('/api/v1/docs', documentation_1.default);
+app.use('/api/v1/voice-engineer', voice_engineer_1.default);
+app.use('/api/v1/notifications', notification_1.default);
 (0, connectDB_1.connectDB)();
 app.listen(5000, () => {
     console.log("running on port 5000");
