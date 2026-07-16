@@ -4,7 +4,7 @@ const express_1 = require("express");
 const bug_finder_1 = require("../controller/bug-finder");
 const bugRouter = (0, express_1.Router)();
 bugRouter.post("/analyze", bug_finder_1.analyzeRepository);
-bugRouter.get("/reports/:id", bug_finder_1.getReports);
+bugRouter.get("/reports-list/:id", bug_finder_1.getReports);
 bugRouter.get("/reports/:id", bug_finder_1.getReportById);
 bugRouter.delete("/reports/:id", bug_finder_1.deleteReport);
 exports.default = bugRouter;

@@ -11,8 +11,8 @@
 // header here to match — that's the one assumption this file makes.
 
 import axios from "axios";
+import { API_BASE } from "../constants/constants";
 
-const API_BASE = "https://aether-api-y0ob.onrender.com/api/v1";
 
 export interface GithubRepoListItem {
   id: number;

@@ -5,8 +5,8 @@
 // get back one grounded assistant ChatMessage with source citations.
 
 import axios from "axios";
+import { API_BASE } from "../constants/constants";
 
-const API_BASE = "https://aether-api-y0ob.onrender.com/api/v1";
 
 export interface ChatHistoryTurn {
   role: "user" | "assistant";

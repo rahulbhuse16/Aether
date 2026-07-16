@@ -1,11 +1,8 @@
 import axios from "axios";
 import type { ReviewFinding } from "../store/types";
 import { createAsyncThunk } from "@reduxjs/toolkit";
+import { API_BASE } from "../constants/constants";
 
-const API_BASE =
-  window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-    ? "http://localhost:5000/api/v1"
-    : "https://aether-api-y0ob.onrender.com/api/v1";
 
 export interface ReviewResponse {
   findings: ReviewFinding[];

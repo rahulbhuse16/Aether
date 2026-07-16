@@ -1,7 +1,7 @@
 import axios, { AxiosError } from "axios";
 import type { ApiArtifact } from "../store/types";
+import { API_BASE } from "../constants/constants";
 
-const API_BASE = "https://aether-api-y0ob.onrender.com/api/v1";
 
 interface GenerateResponse {
   success: boolean;
