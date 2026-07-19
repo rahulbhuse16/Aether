@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getUser = exports.firebaseLogin = void 0;
 const user_1 = require("../models/user");
+const send_email_1 = require("../utils/send-email");
 const firebaseLogin = async (req, res) => {
     try {
         const { uid, email, name, picture, } = req.body;
@@ -22,6 +23,7 @@ const firebaseLogin = async (req, res) => {
                 fullName: name,
                 profileImage: picture,
             });
+            await (0, send_email_1.sendWelcomeMail)(email);
         }
         else {
             user.email = email;

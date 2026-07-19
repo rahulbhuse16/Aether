@@ -1,6 +1,7 @@
 import { userInfo } from "os";
 import { User } from "../models/user";
 import { Request, Response } from "express";
+import { sendWelcomeMail } from "../utils/send-email";
 
 export const firebaseLogin = async (
   req: Request,
@@ -33,6 +34,7 @@ export const firebaseLogin = async (
         fullName: name,
         profileImage: picture,
       });
+      await sendWelcomeMail(email)
     } else {
       user.email = email;
       user.fullName = name;
