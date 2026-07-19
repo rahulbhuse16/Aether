@@ -101,13 +101,9 @@ export function AppShell({
         transition={{ duration: 0.2 }}
         className="relative flex flex-shrink-0 flex-col border-r border-[#0A0B0D] bg-[#0A0B0D]"
       >
-        <div className="flex h-16 items-center gap-2.5 border-b border-white/[0.06] px-4">
-          <Logo size={26} />
-          {!sidebarCollapsed && (
-            <span className="text-[14px] font-medium tracking-tight text-[#F4F3EF]">
-              Aether
-            </span>
-          )}
+        <div className="flex h-16 items-center gap-2.5 border-b border-white/[0.06] px-4 self-center">
+          <Logo size={100} />
+          
         </div>
 
         {/* Project switcher */}

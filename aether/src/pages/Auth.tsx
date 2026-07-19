@@ -84,9 +84,9 @@ function HeroMark() {
 
     return (
         <motion.img
-            src="/aether_logo.svg"
+            src="/aether_logo.png"
             alt="Aether Logo"
-            className="w-full max-w-sm h-auto object-contain drop-shadow-2xl self-center"
+            className="w-full max-w-sm h-70 object-contain drop-shadow-2xl self-center"
             animate={{
                 y: [0, -8, 0],
                 scale: [1, 1.03, 1],
@@ -274,7 +274,7 @@ export default function AuthPage() {
                         <div className="rounded-[15px] bg-[#101215]/95 px-7 py-8 backdrop-blur-xl sm:px-9 sm:py-9">
                             <div className="mb-4 hidden flex-col items-center gap-2.5 lg:flex">
                                 <img
-                                    src="/aether_logo.svg"
+                                    src="/aether_logo.png"
                                     alt="Aether Logo"
                                     className="w-[10vw]  h-auto object-contain drop-shadow-2xl self-center"
 
