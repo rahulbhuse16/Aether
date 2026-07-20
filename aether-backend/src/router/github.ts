@@ -14,13 +14,10 @@ gitHubRouter.post("/index/:id",verifyJWT, indexRepository);
 gitHubRouter.get("/pulls",verifyJWT, getPRByRepoId)
 gitHubRouter.post(
   "/webhook",
-  express.raw({
-    type: "application/json",
-  }),
+  
   githubWebhookController
 );
 
-gitHubRouter.use(express.json());
 
 gitHubRouter.get("/test", (_, res) => {
   res.json({

@@ -25,25 +25,31 @@ const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const task_planner_1 = __importDefault(require("./router/task-planner"));
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
+// IMPORTANT: GitHub webhook MUST come before express.json()
+app.use("/api/v1/github/webhook", express_1.default.raw({
+    type: "application/json",
+}));
+// Normal body parsers
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
-app.use((0, cookie_parser_1.default)()),
-    app.use('/api/v1/auth', auth_1.default);
-app.use('/api/v1/projects', project_1.default);
-app.use('/api/v1/github', github_1.default);
-app.use('/api/v1/dashboard', dashboard_1.default);
-app.use('/api/v1/chat', chat_1.default);
-app.use('/api/v1/code-review', code_review_1.default);
-app.use('/api/v1/api-agent', api_agent_1.default);
-app.use('/api/v1/bug-finder', bug_finder_1.default);
-app.use('/api/v1/architecture', architecture_1.default);
-app.use('/api/v1/deployment', deployment_1.default);
-app.use('/api/v1/docs', documentation_1.default);
-app.use('/api/v1/voice-engineer', voice_engineer_1.default);
-app.use('/api/v1/notifications', notification_1.default);
-app.use('/api/v1/meetings', meeting_agent_1.default);
-app.use('/api/v1/email', email_1.default);
-app.use('/api/v1/task-planner', task_planner_1.default);
+app.use((0, cookie_parser_1.default)());
+// Routes
+app.use("/api/v1/auth", auth_1.default);
+app.use("/api/v1/projects", project_1.default);
+app.use("/api/v1/github", github_1.default);
+app.use("/api/v1/dashboard", dashboard_1.default);
+app.use("/api/v1/chat", chat_1.default);
+app.use("/api/v1/code-review", code_review_1.default);
+app.use("/api/v1/api-agent", api_agent_1.default);
+app.use("/api/v1/bug-finder", bug_finder_1.default);
+app.use("/api/v1/architecture", architecture_1.default);
+app.use("/api/v1/deployment", deployment_1.default);
+app.use("/api/v1/docs", documentation_1.default);
+app.use("/api/v1/voice-engineer", voice_engineer_1.default);
+app.use("/api/v1/notifications", notification_1.default);
+app.use("/api/v1/meetings", meeting_agent_1.default);
+app.use("/api/v1/email", email_1.default);
+app.use("/api/v1/task-planner", task_planner_1.default);
 (0, connectDB_1.connectDB)();
 app.listen(5000, () => {
     console.log("running on port 5000");
