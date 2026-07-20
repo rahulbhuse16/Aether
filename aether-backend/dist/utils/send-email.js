@@ -12,6 +12,7 @@ const transporter = nodemailer_1.default.createTransport({
     host: env_1.ENV.SMTP_HOST,
     port: Number(env_1.ENV.SMTP_PORT),
     secure: Number(env_1.ENV.SMTP_PORT) === 465,
+    family: 4,
     auth: {
         user: env_1.ENV.SMTP_USER,
         pass: env_1.ENV.SMTP_PASS,

@@ -2,16 +2,20 @@
 
 import nodemailer from "nodemailer";
 import { ENV } from "../config/env";
+import SMTPTransport from "nodemailer/lib/smtp-transport";
 
-const transporter = nodemailer.createTransport({
-  host: ENV.SMTP_HOST,
-  port: Number(ENV.SMTP_PORT),
-  secure: Number(ENV.SMTP_PORT) === 465,
-  auth: {
-    user: ENV.SMTP_USER,
-    pass: ENV.SMTP_PASS,
-  },
-});
+const transporter = nodemailer.createTransport(
+  {
+    host: ENV.SMTP_HOST,
+    port: Number(ENV.SMTP_PORT),
+    secure: Number(ENV.SMTP_PORT) === 465,
+    family: 4,
+    auth: {
+      user: ENV.SMTP_USER,
+      pass: ENV.SMTP_PASS,
+    },
+  } as SMTPTransport.Options
+);
 
 const LOGO_URL =
   process.env.LOGO_URL ||
