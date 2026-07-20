@@ -38,6 +38,11 @@ const ProjectSchema = new mongoose_1.default.Schema({
         type: String,
         enum: ["low", "medium", "high"],
     },
+    // Id of the webhook we registered on this repo via ensureWebhook().
+    // Lets us check-before-create on reconnect and clean up on disconnect.
+    githubWebhookId: {
+        type: Number,
+    },
 }, {
     timestamps: true,
 });
@@ -47,4 +52,7 @@ ProjectSchema.index({
 }, {
     unique: true,
 });
+// Non-unique: the webhook handler looks up "every project tracking this repo"
+// by githubRepoId alone (across owners), separate from the per-owner uniqueness above.
+ProjectSchema.index({ githubRepoId: 1 });
 exports.Project = mongoose_1.default.model("Project", ProjectSchema);

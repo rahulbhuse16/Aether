@@ -22,6 +22,7 @@ const notification_1 = __importDefault(require("./router/notification"));
 const meeting_agent_1 = __importDefault(require("./router/meeting-agent"));
 const email_1 = __importDefault(require("./router/email"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
+const task_planner_1 = __importDefault(require("./router/task-planner"));
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
@@ -42,6 +43,7 @@ app.use('/api/v1/voice-engineer', voice_engineer_1.default);
 app.use('/api/v1/notifications', notification_1.default);
 app.use('/api/v1/meetings', meeting_agent_1.default);
 app.use('/api/v1/email', email_1.default);
+app.use('/api/v1/task-planner', task_planner_1.default);
 (0, connectDB_1.connectDB)();
 app.listen(5000, () => {
     console.log("running on port 5000");

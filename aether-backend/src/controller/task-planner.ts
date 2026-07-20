@@ -128,7 +128,7 @@ export async function toggleTask(req: Request, res: Response) {
   try {
 
     const {userId}=req.body
-    
+
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ error: "User not found" })
 
@@ -151,5 +151,41 @@ export async function toggleTask(req: Request, res: Response) {
   } catch (err) {
     console.error("[toggleTask]", err);
     res.status(500).json({ error: "Failed to toggle task" });
+  }
+}
+
+/** GET /api/tasks/project/:projectId — get all tasks for a specific project */
+export async function getTasksByProjectId(req: Request, res: Response) {
+  try {
+    const { userId } = req.query;
+
+    if (!userId || typeof userId !== "string") {
+      return res.status(400).json({ error: "userId is required" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const { projectId } = req.params;
+
+    if (!projectId) {
+      return res.status(400).json({ error: "projectId is required" });
+    }
+
+    // Verify the project belongs to the user
+    const project = await Project.findOne({ _id: projectId, owner: user._id });
+    if (!project) {
+      return res.status(404).json({ error: "Project not found for this user" });
+    }
+
+    const tasks = await Task.find({
+      project: projectId,
+      user: user._id,
+    }).sort({ createdAt: -1 });
+
+    res.json(tasks);
+  } catch (err) {
+    console.error("[getTasksByProjectId]", err);
+    res.status(500).json({ error: "Failed to fetch tasks" });
   }
 }

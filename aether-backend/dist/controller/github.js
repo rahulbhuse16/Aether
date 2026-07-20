@@ -10,7 +10,7 @@ const github_sync_1 = require("../services/github-sync");
 const user_1 = require("../models/user");
 const crypto_1 = __importDefault(require("crypto"));
 const project_1 = require("../models/project");
-const helper_1 = require("../utils/helper");
+const github_connect_1 = require("../services/github-connect");
 /**
  * Redirect user to GitHub OAuth
  * GET /api/github/connect
@@ -82,7 +82,7 @@ const githubCallback = async (req, res) => {
             });
             return;
         }
-        await (0, github_sync_1.connectGithubAccount)(state, accessToken);
+        await (0, github_connect_1.connectGithubAccount)(state, accessToken);
         res.redirect(`${env_1.ENV.FRONTEND_URL}/onboarding?success=true`);
     }
     catch (error) {
@@ -149,148 +149,61 @@ const getPRByRepoId = async (req, res) => {
     }
 };
 exports.getPRByRepoId = getPRByRepoId;
-const verifyGithubSignature = (payload, signature) => {
+function verifySignature(secret, payload, signature) {
     if (!signature)
         return false;
-    const secret = process.env.GITHUB_WEBHOOK_SECRET;
-    if (!secret) {
-        throw new Error("GITHUB_WEBHOOK_SECRET is not configured");
-    }
-    const expectedSignature = "sha256=" +
-        crypto_1.default
-            .createHmac("sha256", secret)
-            .update(payload)
-            .digest("hex");
-    return crypto_1.default.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
-};
+    const expected = "sha256=" + crypto_1.default.createHmac("sha256", secret).update(payload).digest("hex");
+    const a = Buffer.from(expected);
+    const b = Buffer.from(signature);
+    // timingSafeEqual throws on mismatched lengths rather than returning false — guard first.
+    return a.length === b.length && crypto_1.default.timingSafeEqual(a, b);
+}
 const githubWebhookController = async (req, res) => {
+    const signature = req.header("x-hub-signature-256") ?? undefined;
+    if (!verifySignature(env_1.ENV.GITHUB_WEBHOOK_SECRET, req.body, signature)) {
+        return res.status(401).json({ error: "Invalid webhook signature" });
+    }
+    const event = req.header("x-github-event");
+    let payload;
     try {
-        const signature = req.headers["x-hub-signature-256"];
-        const event = req.headers["x-github-event"];
-        const deliveryId = req.headers["x-github-delivery"];
-        // req.body must be Buffer
-        const isValid = verifyGithubSignature(req.body, signature);
-        if (!isValid) {
-            return res.status(401).json({
-                success: false,
-                message: "Invalid GitHub webhook signature",
-            });
+        payload = JSON.parse(req.body.toString("utf8"));
+    }
+    catch {
+        return res.status(400).json({ error: "Malformed payload" });
+    }
+    // GitHub sends this the moment a webhook is created, before any real event —
+    // must return 2xx or GitHub will report the hook as failing immediately.
+    if (event === "ping") {
+        return res.status(200).json({ pong: true });
+    }
+    try {
+        const repoId = payload.repository?.id;
+        if (!repoId)
+            return res.status(200).json({ received: true }); // nothing we can act on
+        // A repo is only synced for the user(s) who connected it as a Project.
+        const projects = await project_1.Project.find({ githubRepoId: repoId });
+        if (!projects.length)
+            return res.status(200).json({ received: true });
+        if (event === "issues" && payload.issue) {
+            await Promise.allSettled(projects.map(async (project) => {
+                const user = await user_1.User.findById(project.owner).select("+githubAccessToken");
+                if (!user)
+                    return;
+                await (0, github_sync_1.upsertTaskFromWebhookIssue)(user, project, payload.issue);
+            }));
         }
-        // Always respond quickly to GitHub
-        res.status(200).json({
-            success: true,
-            message: "Webhook received",
-        });
-        const payload = JSON.parse(req.body.toString());
-        console.log("GitHub Event:", event);
-        console.log("GitHub Delivery:", deliveryId);
-        // -----------------------------------------
-        // PUSH EVENT
-        // -----------------------------------------
-        if (event === "push") {
-            const repository = payload.repository;
-            const githubRepoId = repository.id;
-            const project = await project_1.Project.findOne({
-                githubRepoId,
-            });
-            if (!project) {
-                console.log("Project not found:", githubRepoId);
-                return;
-            }
-            await project_1.Project.updateOne({
-                _id: project._id,
-            }, {
-                $set: {
-                    name: repository.name,
-                    repo: repository.full_name,
-                    openTasks: repository.open_issues_count,
-                    githubUpdatedAt: repository.updated_at,
-                    lastActivity: (0, helper_1.formatTimeAgo)(repository.updated_at),
-                },
-            });
-            console.log(`Project updated from GitHub: ${repository.full_name}`);
-            // Example:
-            // sendSseEvent(project.owner.toString(), {
-            //   type: "GITHUB_PUSH",
-            //   projectId: project._id,
-            //   repository: repository.full_name,
-            // });
-            return;
-        }
-        // -----------------------------------------
-        // ISSUES EVENT
-        // -----------------------------------------
-        if (event === "issues") {
-            const repository = payload.repository;
-            const project = await project_1.Project.findOne({
-                githubRepoId: repository.id,
-            });
-            if (!project)
-                return;
-            await project_1.Project.updateOne({
-                _id: project._id,
-            }, {
-                $set: {
-                    openTasks: repository.open_issues_count,
-                    githubUpdatedAt: repository.updated_at,
-                    lastActivity: (0, helper_1.formatTimeAgo)(repository.updated_at),
-                },
-            });
-            return;
-        }
-        // -----------------------------------------
-        // PULL REQUEST EVENT
-        // -----------------------------------------
-        if (event === "pull_request") {
-            const repository = payload.repository;
-            const project = await project_1.Project.findOne({
-                githubRepoId: repository.id,
-            });
-            if (!project)
-                return;
-            await project_1.Project.updateOne({
-                _id: project._id,
-            }, {
-                $set: {
-                    githubUpdatedAt: repository.updated_at,
-                    lastActivity: (0, helper_1.formatTimeAgo)(repository.updated_at),
-                },
-            });
-            return;
-        }
-        // -----------------------------------------
-        // CREATE / DELETE / RELEASE
-        // -----------------------------------------
-        if (event === "create" ||
-            event === "delete" ||
-            event === "release") {
-            const repository = payload.repository;
-            const project = await project_1.Project.findOne({
-                githubRepoId: repository.id,
-            });
-            if (!project)
-                return;
-            await project_1.Project.updateOne({
-                _id: project._id,
-            }, {
-                $set: {
-                    githubUpdatedAt: repository.updated_at,
-                    lastActivity: (0, helper_1.formatTimeAgo)(repository.updated_at),
-                },
-            });
-            return;
-        }
-        console.log(`Unhandled GitHub event: ${event}`);
+        // We subscribe to push / pull_request / issue_comment / create / delete /
+        // release / workflow_run too (see WEBHOOK_EVENTS in github.connection.service.ts),
+        // but only "issues" drives the task board today. Acknowledging the rest with
+        // 200 keeps the hook healthy in GitHub's UI instead of it being flagged as
+        // failing; add handling for a given event here once you need it.
+        res.status(200).json({ received: true });
     }
     catch (error) {
-        console.error("GitHub Webhook Error:", error?.response?.data || error.message);
-        // Do not send another response if already sent
-        if (!res.headersSent) {
-            return res.status(500).json({
-                success: false,
-                message: "GitHub webhook processing failed",
-            });
-        }
+        console.error(`[webhook/github] failed handling "${event}" event:`, error);
+        // Still 200: a 5xx here makes GitHub retry, and retries of a bug just
+        // repeat the same failure. Log it and let sync-on-poll catch up instead.
+        res.status(200).json({ received: true, error: "Processing failed, logged for investigation" });
     }
 };
 exports.githubWebhookController = githubWebhookController;

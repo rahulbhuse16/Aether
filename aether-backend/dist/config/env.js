@@ -5,7 +5,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ENV = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config();
+dotenv_1.default.config({
+    path: process.env.ENVFILE || ".env",
+});
 const p = process.env;
 exports.ENV = {
     DB_URL: process.env.DB_URL || "",

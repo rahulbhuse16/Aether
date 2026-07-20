@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const task_planner_1 = require("../controller/task-planner");
+const auth_1 = require("../middleware/auth");
+const taskRouter = (0, express_1.Router)();
+taskRouter.use(auth_1.verifyJWT);
+taskRouter.post("/", task_planner_1.createTask);
+taskRouter.patch("/:id/status", task_planner_1.updateTaskStatus);
+taskRouter.patch("/:id/toggle", task_planner_1.toggleTask);
+taskRouter.get("/project/:projectId", task_planner_1.getTasksByProjectId);
+exports.default = taskRouter;

@@ -11,7 +11,7 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const user_1 = require("../models/user");
 const send_email_1 = require("../utils/send-email");
 const env_1 = require("../config/env");
-const github_sync_1 = require("../services/github-sync");
+const github_connect_1 = require("../services/github-connect");
 const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GITHUB_REDIRECT_URI, FRONTEND_URL, JWT_SECRET, } = env_1.ENV;
 const OAUTH_STATE_COOKIE = "oauth_state";
 const SALT_ROUNDS = 10;
@@ -367,7 +367,7 @@ const githubCallback = async (req, res) => {
         }
         const token = issueToken(user._id.toString());
         if (source === 'onboarding') {
-            await (0, github_sync_1.connectGithubAccount)(user._id.toString(), accessToken);
+            await (0, github_connect_1.connectGithubAccount)(user._id.toString(), accessToken);
         }
         res.redirect(`${FRONTEND_URL}/oauth/callback?token=${token}&userId=${user._id}`);
     }

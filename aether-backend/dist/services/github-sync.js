@@ -1,111 +1,163 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.registerGithubWebhook = exports.connectGithubAccount = void 0;
-const project_1 = require("../models/project");
-const user_1 = require("../models/user");
-const helper_1 = require("../utils/helper");
-const axios_1 = __importDefault(require("axios"));
-const env_1 = require("../config/env");
-const connectGithubAccount = async (userId, accessToken) => {
-    try {
-        if (!userId || !accessToken) {
-            return;
-        }
-        const user = await user_1.User.findById(userId);
-        if (!user) {
-            return;
-        }
-        user.githubAccessToken = accessToken;
-        user.githubConnected = true;
-        await user.save();
-        // Fetch repositories
-        const { data: repos } = await axios_1.default.get("https://api.github.com/user/repos", {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-                Accept: "application/vnd.github+json",
-            },
-            params: {
-                sort: "updated",
-                per_page: 100,
-            },
+exports.syncIssuesFromGithub = syncIssuesFromGithub;
+exports.syncAllProjectsFromGithub = syncAllProjectsFromGithub;
+exports.pushTaskStatusToGithub = pushTaskStatusToGithub;
+exports.createGithubIssueForTask = createGithubIssueForTask;
+exports.upsertTaskFromWebhookIssue = upsertTaskFromWebhookIssue;
+const rest_1 = require("@octokit/rest");
+const task_1 = require("../models/task");
+/**
+ * IMPORTANT — this file assumes two schema additions that weren't in the
+ * original Task model (see the note at the bottom of this file for the
+ * exact fields to add). Without them this won't compile / will silently
+ * mis-scope tasks across repos:
+ *
+ *   Task.project        ObjectId ref "Project"  (required)
+ *   Task.githubIssueId   string, e.g. "<githubRepoId>-<issueNumber>", unique per user
+ *
+ * Why: the previous version keyed tasks by `gh-${issue.number}` alone, which
+ * collides the moment a user connects two repos that both have an issue #1.
+ * Scoping by project.githubRepoId as well as the issue number fixes that.
+ */
+function client(user) {
+    return new rest_1.Octokit({ auth: user.githubAccessToken });
+}
+function splitRepo(repoFullName) {
+    const [owner, repo] = repoFullName.split("/");
+    if (!owner || !repo)
+        throw new Error(`Invalid repo "${repoFullName}", expected "owner/repo"`);
+    return { owner, repo };
+}
+function githubIssueId(project, issueNumber) {
+    return `${project.githubRepoId}-${issueNumber}`;
+}
+function issueStatusToTaskStatus(issue) {
+    if (issue.state === "closed")
+        return "done";
+    const inProgress = issue.labels?.some((l) => (typeof l === "string" ? l : l.name)?.toLowerCase() === "in progress");
+    return inProgress ? "in_progress" : "open";
+}
+function taskStatusToGithub(status) {
+    if (status === "done")
+        return { state: "closed" };
+    if (status === "in_progress")
+        return { state: "open", label: "in progress" };
+    return { state: "open" };
+}
+function priorityFromLabels(labels) {
+    const names = labels?.map((l) => (typeof l === "string" ? l : l.name)?.toLowerCase()) ?? [];
+    if (names.includes("high") || names.includes("priority: high"))
+        return "high";
+    if (names.includes("medium") || names.includes("priority: medium"))
+        return "medium";
+    if (names.includes("low") || names.includes("priority: low"))
+        return "low";
+    return undefined;
+}
+/** Pulls every page of issues for a repo (open + closed), skipping pull requests. */
+async function fetchAllIssues(octokit, owner, repo) {
+    const issues = [];
+    let page = 1;
+    // Cap at 500 most-recently-updated issues (5 pages) — plenty for a "recent
+    // activity" sync; anything older is unlikely to matter for an active board.
+    while (page <= 5) {
+        const { data } = await octokit.issues.listForRepo({
+            owner,
+            repo,
+            state: "all",
+            per_page: 100,
+            page,
+            sort: "updated",
+            direction: "desc",
         });
-        for (const repo of repos) {
-            await (0, exports.registerGithubWebhook)(accessToken, repo.owner.login, repo.name);
+        issues.push(...data);
+        if (data.length < 100)
+            break;
+        page += 1;
+    }
+    return issues.filter((issue) => !issue.pull_request);
+}
+/** Pull all issues from a single project's repo and upsert them as Tasks. */
+async function syncIssuesFromGithub(user, project) {
+    const octokit = client(user);
+    const { owner, repo } = splitRepo(project.repo);
+    const issues = await fetchAllIssues(octokit, owner, repo);
+    const upserted = [];
+    for (const issue of issues) {
+        const id = githubIssueId(project, issue.number);
+        const doc = await task_1.Task.findOneAndUpdate({ githubIssueId: id, user: user._id }, {
+            title: issue.title,
+            status: issueStatusToTaskStatus(issue),
+            source: "github",
+            priority: priorityFromLabels(issue.labels),
+            user: user._id,
+            project: project._id,
+            githubIssueNumber: issue.number,
+            githubIssueUrl: issue.html_url,
+            githubIssueId: id,
+        }, { upsert: true, new: true });
+        upserted.push(doc);
+    }
+    return upserted;
+}
+/** Sync every project a user has connected. Uses Promise.allSettled so one bad repo doesn't block the rest. */
+async function syncAllProjectsFromGithub(user, projects) {
+    const results = await Promise.allSettled(projects.map((project) => syncIssuesFromGithub(user, project)));
+    const tasks = [];
+    const failed = [];
+    results.forEach((result, i) => {
+        if (result.status === "fulfilled") {
+            tasks.push(...result.value);
         }
-        const bulkOperations = repos.map((repo) => ({
-            updateOne: {
-                filter: {
-                    owner: user._id,
-                    githubRepoId: repo.id,
-                },
-                update: {
-                    $set: {
-                        owner: user._id,
-                        githubRepoId: repo.id,
-                        name: repo.name,
-                        repo: repo.full_name,
-                        openTasks: repo.open_issues_count,
-                        lastActivity: (0, helper_1.formatTimeAgo)(repo.updated_at),
-                        githubUpdatedAt: repo.updated_at,
-                    },
-                },
-                upsert: true,
-            },
-        }));
-        if (bulkOperations.length) {
-            await project_1.Project.bulkWrite(bulkOperations);
+        else {
+            failed.push({ repo: projects[i].repo, error: String(result.reason?.message ?? result.reason) });
         }
-        const projects = await project_1.Project.find({ owner: user._id })
-            .sort({ githubUpdatedAt: -1 })
-            .select("name repo openTasks lastActivity");
+    });
+    return { tasks, failed };
+}
+/** Push a local status change back out to the GitHub issue (2-way sync). */
+async function pushTaskStatusToGithub(user, project, task) {
+    if (task.source !== "github" || !task.githubIssueNumber)
+        return; // nothing to push
+    const octokit = client(user);
+    const { owner, repo } = splitRepo(project.repo);
+    const { state, label } = taskStatusToGithub(task.status);
+    await octokit.issues.update({ owner, repo, issue_number: task.githubIssueNumber, state });
+    if (label) {
+        await octokit.issues.addLabels({ owner, repo, issue_number: task.githubIssueNumber, labels: [label] });
     }
-    catch (error) {
-        console.error(error);
-    }
-};
-exports.connectGithubAccount = connectGithubAccount;
-const registerGithubWebhook = async (accessToken, owner, repo) => {
-    try {
-        const { data } = await axios_1.default.post(`https://api.github.com/repos/${owner}/${repo}/hooks`, {
-            name: "web",
-            active: true,
-            events: [
-                "push",
-                "issues",
-                "pull_request",
-                "issue_comment",
-                "create",
-                "delete",
-                "release",
-                "workflow_run",
-            ],
-            config: {
-                url: env_1.ENV.GITHUB_WEBHOOK_URL,
-                content_type: "json",
-                secret: env_1.ENV.GITHUB_WEBHOOK_SECRET,
-                insecure_ssl: "0",
-            },
-        }, {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-                Accept: "application/vnd.github+json",
-                "X-GitHub-Api-Version": "2022-11-28",
-            },
-        });
-        console.log(`Webhook registered for ${owner}/${repo}`, data.id);
-        return data;
-    }
-    catch (error) {
-        // GitHub returns 422 if a similar webhook already exists
-        if (error?.response?.status === 422) {
-            console.log(`Webhook already exists for ${owner}/${repo}`);
-            return null;
-        }
-        console.error("Webhook registration failed:", error?.response?.data || error.message);
-        throw error;
-    }
-};
-exports.registerGithubWebhook = registerGithubWebhook;
+}
+/** Create a fresh issue on GitHub for a task that originated as "ai" or "jira". */
+async function createGithubIssueForTask(user, project, task) {
+    const octokit = client(user);
+    const { owner, repo } = splitRepo(project.repo);
+    const { data: issue } = await octokit.issues.create({
+        owner,
+        repo,
+        title: task.title,
+        labels: task.priority ? [task.priority] : undefined,
+    });
+    task.source = "github";
+    task.project = project._id;
+    task.githubIssueNumber = issue.number;
+    task.githubIssueUrl = issue.html_url;
+    task.githubIssueId = githubIssueId(project, issue.number);
+    await task.save();
+    return task;
+}
+/** Convert an inbound GitHub webhook "issues" payload into an upserted Task. */
+async function upsertTaskFromWebhookIssue(user, project, issue) {
+    const id = githubIssueId(project, issue.number);
+    return task_1.Task.findOneAndUpdate({ githubIssueId: id, user: user._id }, {
+        title: issue.title,
+        status: issueStatusToTaskStatus(issue),
+        source: "github",
+        priority: priorityFromLabels(issue.labels),
+        user: user._id,
+        project: project._id,
+        githubIssueNumber: issue.number,
+        githubIssueUrl: issue.html_url,
+        githubIssueId: id,
+    }, { upsert: true, new: true });
+}
