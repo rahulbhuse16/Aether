@@ -1,6 +1,8 @@
 import dotenv from 'dotenv'
 dotenv.config()
 
+const p=process.env
+
 export const ENV = {
     DB_URL: process.env.DB_URL || "",
     GROQ_API_KEY: process.env.GROQ_API_KEY || "",
@@ -17,10 +19,13 @@ export const ENV = {
     JIRA_EMAIL: process.env.JIRA_EMAIL || "",
     JIRA_API_TOKEN: process.env.JIRA_API_TOKEN || "",
     JIRA_PROJECT_KEY: process.env.JIRA_PROJECT_KEY || "",
-    GOOGLE_CLIENT_ID:process.env.GOOGLE_CLIENT_ID || "",
-    GOOGLE_CLIENT_SECRET:process.env.GOOGLE_CLIENT_SECRET || "",
-    GOOGLE_REDIRECT_URI:process.env.GOOGLE_REDIRECT_URI || "",
-    JWT_SECRET:process.env.JWT_SECRET || "",
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || "",
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || "",
+    GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI || "",
+    JWT_SECRET: process.env.JWT_SECRET || "",
+    GITHUB_WEBHOOK_SECRET:p.GITHUB_WEBHOOK_SECRET || "",
+    GITHUB_WEBHOOK_URL:p.GITHUB_WEBHOOK_URL || ""
+
 
 
 

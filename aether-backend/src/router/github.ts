@@ -1,4 +1,4 @@
-import { githubConnect,githubCallback,getPRByRepoId } from "../controller/github"
+import { githubConnect,githubCallback,getPRByRepoId,githubWebhookController } from "../controller/github"
 import express from 'express'
 import { listGithubRepos, indexRepository } from "../controller/onboarding";
 import { verifyJWT } from "../middleware/auth";
@@ -12,6 +12,7 @@ gitHubRouter.get("/callback", githubCallback);
 gitHubRouter.get("/repos/:id",verifyJWT, listGithubRepos);
 gitHubRouter.post("/index/:id",verifyJWT, indexRepository);
 gitHubRouter.get("/pulls",verifyJWT, getPRByRepoId)
+gitHubRouter.post("/webhook",githubWebhookController)
 
 
 gitHubRouter.get("/test", (_, res) => {

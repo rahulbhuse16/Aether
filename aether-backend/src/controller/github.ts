@@ -3,6 +3,9 @@ import axios from "axios";
 import { Request, Response } from "express";
 import { connectGithubAccount } from "../services/github-sync";
 import { User } from "../models/user";
+import crypto from "crypto";
+import { Project } from "../models/project";
+import { formatTimeAgo } from "../utils/helper";
 
 
 
@@ -202,6 +205,227 @@ export const getPRByRepoId = async (
       message:
         error.response?.data?.message || "Failed to fetch pull requests.",
     });
+  }
+};
+
+
+
+
+
+
+const verifyGithubSignature = (
+  payload: Buffer,
+  signature: string | undefined
+) => {
+  if (!signature) return false;
+
+  const secret = process.env.GITHUB_WEBHOOK_SECRET;
+
+  if (!secret) {
+    throw new Error("GITHUB_WEBHOOK_SECRET is not configured");
+  }
+
+  const expectedSignature =
+    "sha256=" +
+    crypto
+      .createHmac("sha256", secret)
+      .update(payload)
+      .digest("hex");
+
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expectedSignature)
+  );
+};
+
+export const githubWebhookController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const signature = req.headers["x-hub-signature-256"] as
+      | string
+      | undefined;
+
+    const event = req.headers["x-github-event"] as string;
+
+    const deliveryId = req.headers["x-github-delivery"] as string;
+
+    // req.body must be Buffer
+    const isValid = verifyGithubSignature(req.body, signature);
+
+    if (!isValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid GitHub webhook signature",
+      });
+    }
+
+    // Always respond quickly to GitHub
+    res.status(200).json({
+      success: true,
+      message: "Webhook received",
+    });
+
+    const payload = JSON.parse(req.body.toString());
+
+    console.log("GitHub Event:", event);
+    console.log("GitHub Delivery:", deliveryId);
+
+    // -----------------------------------------
+    // PUSH EVENT
+    // -----------------------------------------
+    if (event === "push") {
+      const repository = payload.repository;
+
+      const githubRepoId = repository.id;
+
+      const project = await Project.findOne({
+        githubRepoId,
+      });
+
+      if (!project) {
+        console.log("Project not found:", githubRepoId);
+        return;
+      }
+
+      await Project.updateOne(
+        {
+          _id: project._id,
+        },
+        {
+          $set: {
+            name: repository.name,
+            repo: repository.full_name,
+            openTasks: repository.open_issues_count,
+            githubUpdatedAt: repository.updated_at,
+            lastActivity: formatTimeAgo(
+              repository.updated_at
+            ),
+          },
+        }
+      );
+
+      console.log(
+        `Project updated from GitHub: ${repository.full_name}`
+      );
+
+      // Example:
+      // sendSseEvent(project.owner.toString(), {
+      //   type: "GITHUB_PUSH",
+      //   projectId: project._id,
+      //   repository: repository.full_name,
+      // });
+
+      return;
+    }
+
+    // -----------------------------------------
+    // ISSUES EVENT
+    // -----------------------------------------
+    if (event === "issues") {
+      const repository = payload.repository;
+
+      const project = await Project.findOne({
+        githubRepoId: repository.id,
+      });
+
+      if (!project) return;
+
+      await Project.updateOne(
+        {
+          _id: project._id,
+        },
+        {
+          $set: {
+            openTasks: repository.open_issues_count,
+            githubUpdatedAt: repository.updated_at,
+            lastActivity: formatTimeAgo(
+              repository.updated_at
+            ),
+          },
+        }
+      );
+
+      return;
+    }
+
+    // -----------------------------------------
+    // PULL REQUEST EVENT
+    // -----------------------------------------
+    if (event === "pull_request") {
+      const repository = payload.repository;
+
+      const project = await Project.findOne({
+        githubRepoId: repository.id,
+      });
+
+      if (!project) return;
+
+      await Project.updateOne(
+        {
+          _id: project._id,
+        },
+        {
+          $set: {
+            githubUpdatedAt: repository.updated_at,
+            lastActivity: formatTimeAgo(
+              repository.updated_at
+            ),
+          },
+        }
+      );
+
+      return;
+    }
+
+    // -----------------------------------------
+    // CREATE / DELETE / RELEASE
+    // -----------------------------------------
+    if (
+      event === "create" ||
+      event === "delete" ||
+      event === "release"
+    ) {
+      const repository = payload.repository;
+
+      const project = await Project.findOne({
+        githubRepoId: repository.id,
+      });
+
+      if (!project) return;
+
+      await Project.updateOne(
+        {
+          _id: project._id,
+        },
+        {
+          $set: {
+            githubUpdatedAt: repository.updated_at,
+            lastActivity: formatTimeAgo(
+              repository.updated_at
+            ),
+          },
+        }
+      );
+
+      return;
+    }
+
+    console.log(`Unhandled GitHub event: ${event}`);
+  } catch (error: any) {
+    console.error(
+      "GitHub Webhook Error:",
+      error?.response?.data || error.message
+    );
+
+    // Do not send another response if already sent
+    if (!res.headersSent) {
+      return res.status(500).json({
+        success: false,
+        message: "GitHub webhook processing failed",
+      });
+    }
   }
 };
 

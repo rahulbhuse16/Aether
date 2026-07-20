@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ENV = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
+const p = process.env;
 exports.ENV = {
     DB_URL: process.env.DB_URL || "",
     GROQ_API_KEY: process.env.GROQ_API_KEY || "",
@@ -26,4 +27,6 @@ exports.ENV = {
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || "",
     GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI || "",
     JWT_SECRET: process.env.JWT_SECRET || "",
+    GITHUB_WEBHOOK_SECRET: p.GITHUB_WEBHOOK_SECRET || "",
+    GITHUB_WEBHOOK_URL: p.GITHUB_WEBHOOK_URL || ""
 };
