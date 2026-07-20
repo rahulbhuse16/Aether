@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   CheckCircle2,
@@ -15,6 +15,7 @@ import { AppShell } from "../components/AppShell";
 import { GlassCard } from "../components/ui/GlassCard";
 import { PageSection } from "../components/ui/PageSection";
 import { Button } from "../components/ui/Button";
+import { CreateTaskModal } from "../components/ui/CreateTaskModal";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { toggleTask, addTask, updateTaskStatus, clearTasksError} from "../store/slices/tasksSlice";
 
@@ -105,6 +106,7 @@ function TaskCard({ task }: { task: Task }) {
 export default function TaskPlanner() {
   const dispatch = useAppDispatch();
   const { tasks, yesterday, prediction, loading, error } = useAppSelector((s) => s.tasks);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Initial load, then keep the board fresh against whatever GitHub's webhook
   // has already written to the backend: a background poll, plus an immediate
@@ -112,7 +114,7 @@ export default function TaskPlanner() {
   // in right after updating an issue on GitHub).
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  
+
 
   const openCount = tasks.filter((t) => t.status === "open").length;
   const inProgressCount = tasks.filter((t) => t.status === "in_progress").length;
@@ -120,18 +122,29 @@ export default function TaskPlanner() {
 
   const currentProjectId = useAppSelector((s) => s.projects.currentRepoId);
 
-  
+
 
   const handleAddTask = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleCreateTask = (taskData: {
+    title: string;
+    status: "open" | "in_progress" | "done";
+    source: "github" | "jira" | "ai";
+    priority: "high" | "medium" | "low";
+    dueDate?: string;
+  }) => {
     const newTask: Task = {
       id: `t-${Date.now()}`,
-      title: "New task",
-      status: "open",
-      source: "ai",
-      priority: "medium",
+      title: taskData.title,
+      status: taskData.status,
+      source: taskData.source,
+      priority: taskData.priority,
+      dueDate: taskData.dueDate,
       projectId: currentProjectId as string,
-      syncToGithub: true
-      
+      syncToGithub: taskData.source === "github"
+
     };
     dispatch(addTask(newTask)); // optimistic
     dispatch(createTaskRemote(newTask));
@@ -207,10 +220,7 @@ export default function TaskPlanner() {
         </div>
 
         <div className="flex items-center justify-between">
-          <Button size="sm">
-            <Filter className="h-3.5 w-3.5" />
-            Filter
-          </Button>
+         
           <Button size="sm" variant="primary" onClick={handleAddTask} disabled={loading}>
             <Plus className="h-3.5 w-3.5" />
             Add task
@@ -268,6 +278,12 @@ export default function TaskPlanner() {
           </GlassCard>
         )}
       </div>
+
+      <CreateTaskModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onCreateTask={handleCreateTask}
+      />
     </AppShell>
   );
 }

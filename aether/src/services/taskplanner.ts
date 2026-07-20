@@ -14,6 +14,7 @@ export interface Task {
 
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../api/api";
+import { toast } from "../utils/toast";
 
 
 
@@ -33,9 +34,12 @@ export const createTaskRemote = createAsyncThunk<Task, Task & { syncToGithub?: b
       const { data } = await api.post<Task>("/task-planner/", {...task,userId,
         syncToGithub: task.syncToGithub ?? false,
       });
+      toast.success("Task created")
       return data;
     } catch (err: any) {
+      toast.error(err?.response?.data?.error ?? "Failed to create task")
       return rejectWithValue(err?.response?.data?.error ?? "Failed to create task");
+
     }
   }
 );
@@ -48,8 +52,10 @@ export const updateTaskStatusRemote = createAsyncThunk<
 >("tasks/updateTaskStatusRemote", async ({ id, status }, { rejectWithValue }) => {
   try {
     const { data } = await api.patch<Task>(`/task-planner/${id}/status`, { status,userId });
+    toast.success("Task status updated")
     return data;
   } catch (err: any) {
+    toast.error(err?.response?.data?.error ?? "Failed to update task status")
     return rejectWithValue(err?.response?.data?.error ?? "Failed to update task status");
   }
 });
@@ -60,8 +66,10 @@ export const toggleTaskRemote = createAsyncThunk<Task, string, { rejectValue: st
   async (id, { rejectWithValue }) => {
     try {
       const { data } = await api.patch<Task>(`/task-planner/${id}/toggle`,{userId});
+      toast.success("Task toggled")
       return data;
     } catch (err: any) {
+      toast.error(err?.response?.data?.error ?? "Failed to toggle task")
       return rejectWithValue(err?.response?.data?.error ?? "Failed to toggle task");
     }
   }
