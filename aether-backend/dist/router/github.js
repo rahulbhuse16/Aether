@@ -15,7 +15,7 @@ gitHubRouter.post("/index/:id", auth_1.verifyJWT, onboarding_1.indexRepository);
 gitHubRouter.get("/pulls", auth_1.verifyJWT, github_1.getPRByRepoId);
 gitHubRouter.post("/webhook", express_1.default.raw({
     type: "application/json",
-}));
+}), github_1.githubWebhookController);
 gitHubRouter.use(express_1.default.json());
 gitHubRouter.get("/test", (_, res) => {
     res.json({

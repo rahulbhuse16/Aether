@@ -17,6 +17,7 @@ gitHubRouter.post(
   express.raw({
     type: "application/json",
   }),
+  githubWebhookController
 );
 
 gitHubRouter.use(express.json());
