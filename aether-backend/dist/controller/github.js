@@ -189,7 +189,7 @@ const githubWebhookController = async (req, res) => {
             return res.status(200).json({ received: true });
         if (event === "issues" && payload.issue) {
             await Promise.allSettled(projects.map(async (project) => {
-                const user = await user_1.User.findById(project.owner).select("+githubAccessToken");
+                const user = await user_1.User.findById(project.owner);
                 console.log("user", user);
                 if (!user)
                     return;

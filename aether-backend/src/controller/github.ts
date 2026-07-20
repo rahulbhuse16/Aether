@@ -263,7 +263,7 @@ export const githubWebhookController = async (
     if (event === "issues" && payload.issue) {
       await Promise.allSettled(
         projects.map(async (project) => {
-          const user = await User.findById(project.owner).select("+githubAccessToken");
+          const user = await User.findById(project.owner);
           console.log("user",user)
           if (!user) return;
           await syncDBfromWebhook(user, project, payload.issue,payload.action);
