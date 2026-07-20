@@ -13,7 +13,10 @@ gitHubRouter.get("/callback", github_1.githubCallback);
 gitHubRouter.get("/repos/:id", auth_1.verifyJWT, onboarding_1.listGithubRepos);
 gitHubRouter.post("/index/:id", auth_1.verifyJWT, onboarding_1.indexRepository);
 gitHubRouter.get("/pulls", auth_1.verifyJWT, github_1.getPRByRepoId);
-gitHubRouter.post("/webhook", github_1.githubWebhookController);
+gitHubRouter.post("/webhook", express_1.default.raw({
+    type: "application/json",
+}));
+gitHubRouter.use(express_1.default.json());
 gitHubRouter.get("/test", (_, res) => {
     res.json({
         success: true,

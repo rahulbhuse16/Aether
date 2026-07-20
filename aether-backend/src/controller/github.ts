@@ -230,12 +230,14 @@ export const githubWebhookController = async (
   req: Request,
   res: Response
 ) => {
+  console.log("calling webhook")
   const signature = req.header("x-hub-signature-256") ?? undefined;
   if (!verifySignature(ENV.GITHUB_WEBHOOK_SECRET, req.body, signature)) {
     return res.status(401).json({ error: "Invalid webhook signature" });
   }
  
   const event = req.header("x-github-event");
+  console.log("calling event",event,signature)
   let payload: any;
   try {
     payload = JSON.parse(req.body.toString("utf8"));

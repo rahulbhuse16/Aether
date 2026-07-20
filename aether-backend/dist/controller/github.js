@@ -159,11 +159,13 @@ function verifySignature(secret, payload, signature) {
     return a.length === b.length && crypto_1.default.timingSafeEqual(a, b);
 }
 const githubWebhookController = async (req, res) => {
+    console.log("calling webhook");
     const signature = req.header("x-hub-signature-256") ?? undefined;
     if (!verifySignature(env_1.ENV.GITHUB_WEBHOOK_SECRET, req.body, signature)) {
         return res.status(401).json({ error: "Invalid webhook signature" });
     }
     const event = req.header("x-github-event");
+    console.log("calling event", event, signature);
     let payload;
     try {
         payload = JSON.parse(req.body.toString("utf8"));
