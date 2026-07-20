@@ -164,6 +164,9 @@ async function upsertTaskFromWebhookIssue(user, project, issue) {
 }
 const syncDBfromWebhook = async (user, project, issue, action) => {
     const githubIssueIdValue = githubIssueId(project, issue.number);
+    console.log("action", action);
+    console.log("project", project);
+    console.log("id", user._id);
     switch (action) {
         case "opened": {
             // Create task only if it does not already exist
