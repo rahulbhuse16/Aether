@@ -2,7 +2,7 @@ import { ENV } from "../config/env";
 import axios from "axios";
 import { Request, Response } from "express";
 import { syncDBfromWebhook, upsertTaskFromWebhookIssue } from "../services/github-sync";
-import { User } from "../models/user";
+import { IUser, User } from "../models/user";
 import crypto from "crypto";
 import { Project } from "../models/project";
 import { formatTimeAgo } from "../utils/helper";
@@ -26,7 +26,7 @@ export const githubConnect = async (
   console.log("githubConnect")
   try {
     const clientId = ENV.GITHUB_CLIENT_ID;
-    const {state}=req.query
+    const { state } = req.query
 
     if (!clientId) {
       res.status(500).json({
@@ -68,7 +68,7 @@ export const githubCallback = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { code,state } = req.query;
+    const { code, state } = req.query;
 
     console.log("code", code)
 
@@ -108,10 +108,10 @@ export const githubCallback = async (
       return;
     }
 
-    
 
 
-    await connectGithubAccount(state as string,accessToken)
+
+    await connectGithubAccount(state as string, accessToken)
 
 
 
@@ -137,11 +137,11 @@ export const githubCallback = async (
 export const getPRByRepoId = async (
   req: Request,
   res: Response
-)=> {
+) => {
   try {
-    const { repoId,userId } = req.query;
+    const { repoId, userId } = req.query;
 
-    
+
 
 
     if (!repoId || !userId) {
@@ -153,9 +153,9 @@ export const getPRByRepoId = async (
     }
 
     const user = await User.findById(userId).select("+githubAccessToken");
-        if (!user?.githubAccessToken) {
-          return res.status(409).json({ error: "GitHub account not connected" });
-        }
+    if (!user?.githubAccessToken) {
+      return res.status(409).json({ error: "GitHub account not connected" });
+    }
     const accessToken = user.githubAccessToken;
 
     const headers = {
@@ -235,48 +235,64 @@ export const githubWebhookController = async (
   if (!verifySignature(ENV.GITHUB_WEBHOOK_SECRET, req.body, signature)) {
     return res.status(401).json({ error: "Invalid webhook signature" });
   }
- 
+
   const event = req.header("x-github-event");
-  console.log("calling event",event,signature)
+  console.log("calling event", event, signature)
   let payload: any;
   try {
     payload = JSON.parse(req.body.toString("utf8"));
   } catch {
     return res.status(400).json({ error: "Malformed payload" });
   }
- 
+
   // GitHub sends this the moment a webhook is created, before any real event —
   // must return 2xx or GitHub will report the hook as failing immediately.
   if (event === "ping") {
     return res.status(200).json({ pong: true });
   }
- 
+
   try {
     const repoId = payload.repository?.id;
     if (!repoId) return res.status(200).json({ received: true }); // nothing we can act on
- 
+
     // A repo is only synced for the user(s) who connected it as a Project.
-    const projects = await Project.find({ githubRepoId: repoId });
-    console.log("projects",projects)
+    const projects = await Project.find({
+      githubRepoId: payload.repository.id,
+    }).populate("owner");
+    console.log("projects", projects)
     if (!projects.length) return res.status(200).json({ received: true });
- 
+
     if (event === "issues" && payload.issue) {
       await Promise.allSettled(
         projects.map(async (project) => {
-          const user = await User.findById(project.owner);
-          console.log("user",user)
-          if (!user) return;
-          await syncDBfromWebhook(user, project, payload.issue,payload.action);
+          const user = project.owner as unknown as IUser;
+
+          console.log("user", user);
+
+          if (!user || !user._id) {
+            console.error(
+              "Owner user not found:",
+              project.owner
+            );
+            return;
+          }
+
+          await syncDBfromWebhook(
+            user,
+            project,
+            payload.issue,
+            payload.action
+          );
         })
       );
     }
- 
+
     // We subscribe to push / pull_request / issue_comment / create / delete /
     // release / workflow_run too (see WEBHOOK_EVENTS in github.connection.service.ts),
     // but only "issues" drives the task board today. Acknowledging the rest with
     // 200 keeps the hook healthy in GitHub's UI instead of it being flagged as
     // failing; add handling for a given event here once you need it.
- 
+
     res.status(200).json({ received: true });
   } catch (error) {
     console.error(`[webhook/github] failed handling "${event}" event:`, error);

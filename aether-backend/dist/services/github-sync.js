@@ -167,14 +167,6 @@ const syncDBfromWebhook = async (user, project, issue, action) => {
     switch (action) {
         case "opened": {
             // Create task only if it does not already exist
-            const existingTask = await task_1.Task.findOne({
-                githubIssueId: githubIssueIdValue,
-                user: user._id,
-                project: project._id,
-            });
-            if (existingTask) {
-                return existingTask;
-            }
             return await task_1.Task.create({
                 title: issue.title,
                 status: issueStatusToTaskStatus(issue),

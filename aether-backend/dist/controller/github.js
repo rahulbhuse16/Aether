@@ -183,16 +183,20 @@ const githubWebhookController = async (req, res) => {
         if (!repoId)
             return res.status(200).json({ received: true }); // nothing we can act on
         // A repo is only synced for the user(s) who connected it as a Project.
-        const projects = await project_1.Project.find({ githubRepoId: repoId });
+        const projects = await project_1.Project.find({
+            githubRepoId: payload.repository.id,
+        }).populate("owner");
         console.log("projects", projects);
         if (!projects.length)
             return res.status(200).json({ received: true });
         if (event === "issues" && payload.issue) {
             await Promise.allSettled(projects.map(async (project) => {
-                const user = await user_1.User.findById(project.owner);
+                const user = project.owner;
                 console.log("user", user);
-                if (!user)
+                if (!user || !user._id) {
+                    console.error("Owner user not found:", project.owner);
                     return;
+                }
                 await (0, github_sync_1.syncDBfromWebhook)(user, project, payload.issue, payload.action);
             }));
         }
