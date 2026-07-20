@@ -163,7 +163,6 @@ async function upsertTaskFromWebhookIssue(user, project, issue) {
     }, { upsert: true, new: true });
 }
 const syncDBfromWebhook = async (user, project, issue, action) => {
-    console.log("syncDBfromWebhook", issue, action, user, project);
     const githubIssueIdValue = githubIssueId(project, issue.number);
     switch (action) {
         case "opened": {
