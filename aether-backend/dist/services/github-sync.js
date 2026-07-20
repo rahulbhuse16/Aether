@@ -170,17 +170,23 @@ const syncDBfromWebhook = async (user, project, issue, action) => {
     switch (action) {
         case "opened": {
             // Create task only if it does not already exist
-            return await task_1.Task.create({
-                title: issue.title,
-                status: issueStatusToTaskStatus(issue),
-                source: "github",
-                priority: priorityFromLabels(issue.labels),
-                user: user._id,
-                project: project._id,
-                githubIssueNumber: issue.number,
-                githubIssueUrl: issue.html_url,
-                githubIssueId: githubIssueIdValue,
-            });
+            try {
+                return await task_1.Task.create({
+                    title: issue.title,
+                    status: issueStatusToTaskStatus(issue),
+                    source: "github",
+                    priority: priorityFromLabels(issue.labels),
+                    user: user._id,
+                    project: project._id,
+                    githubIssueNumber: issue.number,
+                    githubIssueUrl: issue.html_url,
+                    githubIssueId: githubIssueIdValue,
+                });
+            }
+            catch (error) {
+                console.error(`Failed to create task for user ${user._id}, issue #${issue.number}:`, error);
+                return null;
+            }
         }
         case "closed": {
             return await upsertTaskFromWebhookIssue(user, project, issue);
