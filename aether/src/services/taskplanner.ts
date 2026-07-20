@@ -74,3 +74,20 @@ export const toggleTaskRemote = createAsyncThunk<Task, string, { rejectValue: st
     }
   }
 );
+
+/** GET /tasks/project/:projectId — get tasks by project ID */
+export const getTasksByProjectId = createAsyncThunk<
+  Task[],
+  { projectId: string },
+  { rejectValue: string }
+>("tasks/getTasksByProjectId", async ({ projectId }, { rejectWithValue }) => {
+  try {
+    const { data } = await api.get<Task[]>(`/task-planner/project/${projectId}`, {
+      params: { userId },
+    });
+    return data;
+  } catch (err: any) {
+    toast.error(err?.response?.data?.error ?? "Failed to fetch tasks")
+    return rejectWithValue(err?.response?.data?.error ?? "Failed to fetch tasks");
+  }
+});

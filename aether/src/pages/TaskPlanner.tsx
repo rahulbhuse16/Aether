@@ -20,7 +20,7 @@ import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { toggleTask, addTask, updateTaskStatus, clearTasksError} from "../store/slices/tasksSlice";
 
 import { TaskBoardSkeleton } from "../components/ui/Skeleton";
-import { updateTaskStatusRemote, createTaskRemote, toggleTaskRemote,type Task  } from "../services/taskplanner";
+import { updateTaskStatusRemote, createTaskRemote, toggleTaskRemote, getTasksByProjectId, type Task  } from "../services/taskplanner";
 
 // GitHub's webhook is what makes this "real-time" — the moment an issue changes
 // on GitHub, the backend writes it to Mongo immediately. The frontend doesn't
@@ -114,15 +114,18 @@ export default function TaskPlanner() {
   // in right after updating an issue on GitHub).
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-
-
   const openCount = tasks.filter((t) => t.status === "open").length;
   const inProgressCount = tasks.filter((t) => t.status === "in_progress").length;
   const doneCount = tasks.filter((t) => t.status === "done").length;
 
   const currentProjectId = useAppSelector((s) => s.projects.currentRepoId);
 
-
+  // Fetch tasks by project ID when project changes
+  useEffect(() => {
+    if (currentProjectId) {
+      dispatch(getTasksByProjectId({ projectId: currentProjectId }));
+    }
+  }, [currentProjectId, dispatch]);
 
   const handleAddTask = () => {
     setIsModalOpen(true);

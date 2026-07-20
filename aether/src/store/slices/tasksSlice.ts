@@ -1,7 +1,7 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { Task } from "../types";
 import { fetchDailyDigest } from "../../services/dashboard";
-import { createTaskRemote, updateTaskStatusRemote, toggleTaskRemote } from "../../services/taskplanner";
+import { createTaskRemote, updateTaskStatusRemote, toggleTaskRemote, getTasksByProjectId } from "../../services/taskplanner";
 
 
 interface TasksState {
@@ -91,6 +91,20 @@ const tasksSlice = createSlice({
       })
       .addCase(toggleTaskRemote.rejected, (state, action) => {
         state.error = action.payload ?? "Failed to toggle task.";
+      })
+
+      // --- get tasks by project ID ---
+      .addCase(getTasksByProjectId.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getTasksByProjectId.fulfilled, (state, action) => {
+        state.loading = false;
+        state.tasks = action.payload;
+      })
+      .addCase(getTasksByProjectId.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload ?? "Failed to fetch tasks.";
       });
   },
 });
