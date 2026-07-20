@@ -342,9 +342,17 @@ export const googleCallback = async (req: Request, res: Response): Promise<void>
 /* ------------------------------------------------------------------ */
 
 export const loginGithub = (req: Request, res: Response): void => {
-  const state = crypto.randomBytes(16).toString("hex");
-  const source=req.query.source
-  setStateCookie(res, state);
+  const randomState = crypto.randomBytes(16).toString("hex");
+
+  const source =
+    typeof req.query.source === "string"
+      ? req.query.source
+      : "auth";
+
+  // Store source inside state
+  const state = `${randomState}.${source}`;
+
+  setStateCookie(res, randomState);
 
   const params = new URLSearchParams({
     client_id: GITHUB_CLIENT_ID,
@@ -352,22 +360,39 @@ export const loginGithub = (req: Request, res: Response): void => {
     scope: "read:user user:email repo workflow",
     allow_signup: "true",
     state,
-    source:source as string
   });
 
-  res.redirect(`https://github.com/login/oauth/authorize?${params.toString()}`);
+  res.redirect(
+    `https://github.com/login/oauth/authorize?${params.toString()}`
+  );
 };
 
 export const githubCallback = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { code, state,source } = req.query as { code?: string; state?: string,source?:string };
-    console.log("query params for github callback",code,state,source)
+    const { code, state } = req.query as {
+      code?: string;
+      state?: string;
+    };
+
+    if (!code || !state) {
+      res.redirect(`${FRONTEND_URL}/auth?error=github_oauth_failed`);
+      return;
+    }
+
+    // Extract random state and source
+    const [randomState, source] = state.split(".");
+
+    console.log("randomState:", randomState);
+    console.log("source:", source)
+
     const savedState = req.cookies?.[OAUTH_STATE_COOKIE];
 
-    if (!code || !state || state !== savedState) {
+    // Validate state
+    if (randomState !== savedState) {
       res.redirect(`${FRONTEND_URL}/auth?error=oauth_state_mismatch`);
       return;
     }
+
     res.clearCookie(OAUTH_STATE_COOKIE);
 
     const { data: tokenData } = await axios.post(
@@ -422,9 +447,9 @@ export const githubCallback = async (req: Request, res: Response): Promise<void>
 
     const token = issueToken(user._id.toString());
 
-    if(source==='onboarding'){
+    if (source === 'onboarding') {
 
-    await connectGithubAccount(state , accessToken)
+      await connectGithubAccount(randomState, accessToken)
     }
 
     res.redirect(`${FRONTEND_URL}/oauth/callback?token=${token}&userId=${user._id}`);
