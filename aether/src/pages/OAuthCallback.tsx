@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { loadUser } from "../services/auth";
 
 export default function OAuthCallback() {
   const [params] = useSearchParams();
@@ -27,7 +26,7 @@ export default function OAuthCallback() {
     localStorage.setItem("userId", userId);
     localStorage.setItem("token", token);
 
-    loadUser().finally(() => navigate("/dashboard"));
+    navigate("/dashboard");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
