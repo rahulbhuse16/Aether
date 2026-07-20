@@ -10,7 +10,11 @@ function App() {
  // useSSENotification()
 
   useEffect(()=>{
+    const token=localStorage.getItem('token')
+    if(token){
+    console.log(token)
     loadUser()
+  }
 
   },[])
 

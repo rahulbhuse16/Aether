@@ -22,6 +22,7 @@ import {
   type GithubRepoListItem,
   type IndexedProject,
 } from "../services/onboarding";
+import { API_BASE } from "../constants/constants";
 
 type Step = 1 | 2 | 3;
 
@@ -71,7 +72,7 @@ function ConnectStep({ onConnected }: { onConnected: () => void }) {
       // run before that happens. Step 2 is reached instead via the
       // `success=true` redirect param once GitHub sends the user back
       // (see initialStep in the component below).
-      window.location.href = `https://aether-api-y0ob.onrender.com/api/v1/github/connect?state=${userId}`;
+      window.location.href = `${API_BASE}/auth/github/connect?state=${userId}&source=onboarding`;
       onConnected();
       await loadUser();
     } catch {

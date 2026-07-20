@@ -1,6 +1,7 @@
 import axios from "axios";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { API_BASE } from "../constants/constants";
+import api from "../api/api";
 export type Severity = "critical" | "high" | "medium" | "low" | "info";
 
 export interface BugFinding {
@@ -73,9 +74,6 @@ export interface GetReportResponse {
 // block and import that instance instead — keep the interceptor logic.
 // -----------------------------------------------------------------------------
 
-const api = axios.create({
-  baseURL: API_BASE,
-});
 
 
 

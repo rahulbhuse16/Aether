@@ -1,6 +1,6 @@
 import axios, { AxiosError } from "axios";
 import type { ApiArtifact } from "../store/types";
-import { API_BASE } from "../constants/constants";
+import api from "../api/api";
 
 
 interface GenerateResponse {
@@ -29,12 +29,7 @@ interface LatestSessionResponse {
   message?: string;
 }
 
-const api = axios.create({
-  baseURL: API_BASE,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+
 
 const handleError = (error: unknown): never => {
   if (axios.isAxiosError(error)) {

@@ -1,6 +1,7 @@
 import axios from "axios";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { API_BASE } from "../constants/constants";
+import api from "../api/api";
 export type GeneratedDocType = "readme" | "api" | "architecture" | "flow";
 
 export interface GeneratedDoc {
@@ -58,9 +59,7 @@ export interface GetLatestDocsResponse {
 // block and import that instance instead — keep the interceptor logic.
 // -----------------------------------------------------------------------------
 
-const api = axios.create({
-  baseURL: API_BASE
-});
+
 
 
 

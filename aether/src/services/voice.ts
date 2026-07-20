@@ -1,6 +1,6 @@
 import axios from "axios";
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { API_BASE } from "../constants/constants";
+import api from "../api/api";
 
 export interface VoiceCommand {
   id: string;
@@ -31,9 +31,7 @@ export interface VoiceHistoryResponse {
 // Axios instance
 // -----------------------------------------------------------------------------
 
-const api = axios.create({
-  baseURL: API_BASE,
-});
+
 
 function extractErrorMessage(error: unknown, fallback: string): string {
   if (axios.isAxiosError(error)) {

@@ -1,6 +1,6 @@
 import axios from "axios";
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { API_BASE } from "../constants/constants";
+import api from "../api/api";
 export type NodeType = "frontend" | "gateway" | "service" | "database" | "cache" | "queue";
 
 export interface ArchitectureNode {
@@ -36,10 +36,7 @@ export interface GenerateArchitectureResponse {
 // block and import that instance instead — keep the interceptor logic.
 // -----------------------------------------------------------------------------
 
-const api = axios.create({
-  baseURL: API_BASE,
- 
-});
+
 
 
 

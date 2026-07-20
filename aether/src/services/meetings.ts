@@ -1,5 +1,6 @@
 import axios, { AxiosError } from "axios";
 import { API_BASE } from "../constants/constants";
+import api from "../api/api";
 
 const API_BASE_URL = API_BASE;
 
@@ -50,12 +51,7 @@ export class ApiError extends Error {
   }
 }
 
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+
 
 function handleAxiosError(error: unknown): never {
   if (axios.isAxiosError(error)) {

@@ -243,10 +243,7 @@ export default function AuthPage() {
         }
     }
 
-    const handleResetPwd=async()=>{
-        await resetPassword(email);
-
-    }
+    
 
     return (
         <div className="flex min-h-screen flex-col bg-[#0A0B0D] lg:flex-row">
@@ -410,7 +407,7 @@ export default function AuthPage() {
 
                                     {!isSignUp && (
                                         <div className="pt-1 flex justify-end cursor-pointer">
-                                            <a href="/forgot-pwd"  className="text-[13px] text-[#94969E] transition-colors hover:text-[#F4F3EF] cursor-pointer">
+                                            <a href="/reset-password"  className="text-[13px] text-[#94969E] transition-colors hover:text-[#F4F3EF] cursor-pointer">
                                                 Forgot password?
                                             </a>
                                         </div>

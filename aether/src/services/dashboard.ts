@@ -1,11 +1,11 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import axios from "axios";
-import { API_BASE } from "../constants/constants";
+import api from "../api/api";
+
 
 export const fetchUserProjects = createAsyncThunk('projects/fetchUserProjects', async (userId: string, thunkAPI) => {
     try {
 
-        const res = await axios.get(`${API_BASE}/projects/${userId}`)
+        const res = await api.get(`/projects/${userId}`)
         return thunkAPI.fulfillWithValue({
             projects: res.data.data.projects,
             currentProjectId: res.data.data.currentProjectId
@@ -30,7 +30,7 @@ export const fetchDailyDigest = createAsyncThunk('tasks/fetchDailyDigest', async
 }, thunkAPI) => {
     try {
 
-        const response = await axios.post(`${API_BASE}/dashboard/daily-digest`, {
+        const response = await api.post(`/dashboard/daily-digest`, {
             githubAccessToken,
             repoId
 

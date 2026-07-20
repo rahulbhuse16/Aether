@@ -4,8 +4,7 @@
 // of recent history for continuity) for the currently indexed project,
 // get back one grounded assistant ChatMessage with source citations.
 
-import axios from "axios";
-import { API_BASE } from "../constants/constants";
+import api from '../api/api'
 
 
 export interface ChatHistoryTurn {
@@ -36,7 +35,7 @@ export async function sendRepoChatMessage(
   message: string,
   history: ChatHistoryTurn[]
 ): Promise<RepoChatMessage> {
-  const res = await axios.post(`${API_BASE}/chat/message`, {
+  const res = await api.post(`/chat/message`, {
     projectId,
     message,
     history,

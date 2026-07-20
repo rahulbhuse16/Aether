@@ -12,6 +12,7 @@
 
 import axios from "axios";
 import { API_BASE } from "../constants/constants";
+import api from "../api/api";
 
 
 export interface GithubRepoListItem {
@@ -46,7 +47,7 @@ async function readErrorMessage(res: Response, fallback: string): Promise<string
 const userId=localStorage.getItem("userId") as string
 
 export async function fetchGithubRepos(): Promise<GithubRepoListItem[]> {
-  const res = await axios.get(`${API_BASE}/github/repos/${userId}`);
+  const res = await api.get(`/github/repos/${userId}`);
 
   if (!res.data) {
     throw new Error(await readErrorMessage(res.data, "Couldn't load your repositories."));
@@ -57,7 +58,7 @@ export async function fetchGithubRepos(): Promise<GithubRepoListItem[]> {
 }
 
 export async function indexGithubRepo(githubRepoId: number): Promise<IndexedProject> {
-  const res = await axios.post(`${API_BASE}/github/index/${userId}`, {githubRepoId});
+  const res = await api.post(`/github/index/${userId}`, {githubRepoId});
 
   if (!res.data) {
     throw new Error(await readErrorMessage(res.data, "Couldn't index that repository."));

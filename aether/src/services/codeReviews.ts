@@ -1,7 +1,6 @@
-import axios from "axios";
 import type { ReviewFinding } from "../store/types";
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { API_BASE } from "../constants/constants";
+import api from "../api/api";
 
 
 export interface ReviewResponse {
@@ -13,7 +12,7 @@ export async function fetchCodeReview(payload: {
   prNumber: number;
 }): Promise<ReviewResponse> {
   const userId = localStorage.getItem("userId") || "";
-  const res = await axios.post(`${API_BASE}/code-review/review`, {
+  const res = await api.post(`/code-review/review`, {
     projectId: payload.projectId,
     prNumber: payload.prNumber,
     userId,
@@ -28,7 +27,7 @@ export async function fetchPullRequest(
   
 ) {
   const userId = localStorage.getItem("userId") || "";
-  const res = await axios.get(`${API_BASE}/github/pulls?repoId=${projectId}&userId=${userId}`);
+  const res = await api.get(`/github/pulls?repoId=${projectId}&userId=${userId}`);
 
   return res.data.pullRequests;
 }

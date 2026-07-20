@@ -1,146 +1,20 @@
-
-/**
- * AuthPage — Aether
- *
- * Requires:
- *   npm install framer-motion lucide-react
- *
- * Recommended fonts (next/font/google or the `geist` package):
- *   Display / body : Geist Sans      -> --font-sans
- *   Mono (readouts): Geist Mono      -> --font-mono
- * Falls back to system sans/mono if not configured.
- *
- * Brand tokens used inline (no tailwind.config changes required):
- *   bg base        #0A0B0D
- *   card surface   #101215
- *   border         white/8-10%
- *   text primary   #F4F3EF
- *   text secondary #94969E
- *   text muted     #55575F
- *   accent purple  #8B7FE8
- *   accent teal    #22A67D
- */
-
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-    Mail,
-    Loader2,
-    ChevronRightCircle,
-
-} from "lucide-react";
-import { resetPassword } from "../services/auth";
-import { useNavigate } from "react-router-dom";
-
-
-
-
-/* ---------------------------------------------------------------- */
-/* Static mark — used small, at the top of the auth card             */
-/* ---------------------------------------------------------------- */
-
-function AetherMark({ size = 36 }: { size?: number }) {
-    return (
-        <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
-            <defs>
-                <linearGradient id="aetherGradSmall" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#8B7FE8" />
-                    <stop offset="100%" stopColor="#22A67D" />
-                </linearGradient>
-            </defs>
-            <polygon
-                points="50,6 91,28 91,72 50,94 9,72 9,28"
-                fill="none"
-                stroke="url(#aetherGradSmall)"
-                strokeWidth="2.5"
-                strokeLinejoin="round"
-            />
-            <path d="M28,36 Q40,20 50,15" fill="none" stroke="url(#aetherGradSmall)" strokeWidth="1.6" />
-            <path d="M72,36 Q60,20 50,15" fill="none" stroke="url(#aetherGradSmall)" strokeWidth="1.6" />
-            <path d="M50,15 Q42,42 38,58" fill="none" stroke="url(#aetherGradSmall)" strokeWidth="3.2" strokeLinecap="round" />
-            <path d="M50,15 Q58,42 62,58" fill="none" stroke="url(#aetherGradSmall)" strokeWidth="3.2" strokeLinecap="round" />
-            <line x1="42" y1="43" x2="58" y2="43" stroke="url(#aetherGradSmall)" strokeWidth="2.6" strokeLinecap="round" />
-            <circle cx="50" cy="15" r="4.5" fill="url(#aetherGradSmall)" />
-            <circle cx="28" cy="36" r="3" fill="url(#aetherGradSmall)" />
-            <circle cx="72" cy="36" r="3" fill="url(#aetherGradSmall)" />
-            <circle cx="38" cy="58" r="3" fill="url(#aetherGradSmall)" />
-            <circle cx="62" cy="58" r="3" fill="url(#aetherGradSmall)" />
-        </svg>
-    );
-}
-
-/* ---------------------------------------------------------------- */
-/* Hero mark — large, with data flowing along the connecting lines   */
-/* ---------------------------------------------------------------- */
+import { Lock, Eye, EyeOff, Mail, Loader2, ChevronRightCircle, CheckCircle2, MailCheck } from "lucide-react";
+import { resetPassword, forgotPassword } from "../services/auth";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 function HeroMark() {
-
-
     return (
         <motion.img
-            src="/aether_logo.svg"
+            src="/aether_logo.png"
             alt="Aether Logo"
-            className="w-full max-w-sm h-auto object-contain drop-shadow-2xl self-center"
-            animate={{
-                y: [0, -8, 0],
-                scale: [1, 1.03, 1],
-            }}
-            transition={{
-                duration: 5,
-                repeat: Infinity,
-                ease: "easeInOut",
-            }}
+            className="w-full max-w-sm h-40 object-contain drop-shadow-2xl self-center"
+            animate={{ y: [0, -8, 0], scale: [1, 1.03, 1] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
         />
     );
 }
-
-/* ---------------------------------------------------------------- */
-/* Boot log — literal "operating system" signature detail            */
-/* ---------------------------------------------------------------- */
-
-
-
-/* ---------------------------------------------------------------- */
-/* Brand panel                                                       */
-/* ---------------------------------------------------------------- */
-
-function BrandPanel() {
-    return (
-        <div className="relative hidden h-full w-full flex-col justify-center gap-12 overflow-hidden bg-[#0A0B0D] px-14 py-12 lg:flex">
-            <div
-                className="pointer-events-none absolute inset-0 opacity-[0.05]"
-                style={{
-                    backgroundImage:
-                        "radial-gradient(rgba(244,243,239,0.6) 1px, transparent 1px)",
-                    backgroundSize: "26px 26px",
-                }}
-            />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#0A0B0D] to-transparent" />
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-[#0A0B0D] to-transparent" />
-
-            <HeroMark />
-
-            <div className="max-w-md space-y-4 text-center self-center">
-                <span className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-[#22A67D]">
-                    AI engineering operating system
-                </span>
-                <h1 className="text-[34px] font-medium leading-[1.15] tracking-tight text-[#F4F3EF]">
-                    Engineering runs on Aether
-                </h1>
-                <p className="mx-auto max-w-sm text-[15px] leading-relaxed text-[#94969E]">
-                    Aether reviews your code, understands your repository, and turns
-                    AI suggestions into pull requests and tickets you can actually
-                    merge.
-                </p>
-            </div>
-
-        </div>
-    );
-}
-
-/* ---------------------------------------------------------------- */
-/* Field primitive                                                   */
-/* ---------------------------------------------------------------- */
 
 function Field({
     icon: Icon,
@@ -153,41 +27,52 @@ function Field({
             <Icon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#55575F]" />
             <input
                 {...props}
-                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] py-2.5 pl-10 pr-3.5 text-[14px] text-[#F4F3EF] placeholder:text-[#55575F] outline-none transition-colors focus:border-white/20 focus:bg-white/[0.04] focus:ring-2 focus:ring-[#8B7FE8]/25"
+                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] py-2.5 pl-10 pr-10 text-[14px] text-[#F4F3EF] placeholder:text-[#55575F] outline-none transition-colors focus:border-white/20 focus:bg-white/[0.04] focus:ring-2 focus:ring-[#8B7FE8]/25"
             />
         </div>
     );
 }
 
-/* ---------------------------------------------------------------- */
-/* Main component                                                    */
-/* ---------------------------------------------------------------- */
+export default function ResetPassword() {
+    const [params] = useSearchParams();
+    const navigate = useNavigate();
 
-export default function ForgotPwd() {
+    const id = params.get("id");
+    const token = params.get("token");
+    const hasLink = !!id && !!token;
+
+    /* ---- state for "request a link" flow (no id/token in URL) ---- */
+    const [email, setEmail] = useState("");
+    const [linkSent, setLinkSent] = useState(false);
+
+    /* ---- state for "set new password" flow (id/token present) ---- */
+    const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
+    const [done, setDone] = useState(false);
+
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const [email, setEmail] = useState("");
-
-    const navigate=useNavigate()
-
-
-
-    async function handleSubmit(e: React.FormEvent) {
+    async function handleRequestLink(e: React.FormEvent) {
         e.preventDefault();
         setError(null);
 
-       
         if (!email.includes("@")) {
             setError("Enter a valid email address.");
             return;
         }
-       
 
         try {
             setLoading(true);
-            await resetPassword(email)
-            navigate("/auth")
+            const result = await forgotPassword(email);
+
+            if (!result.success) {
+                setError(result.error ?? "Something went wrong. Try again.");
+                return;
+            }
+
+            setLinkSent(true);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
         } finally {
@@ -195,9 +80,35 @@ export default function ForgotPwd() {
         }
     }
 
-    
+    async function handleResetSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        setError(null);
 
-    
+        if (password.length < 8) {
+            setError("Password must be at least 8 characters.");
+            return;
+        }
+        if (password !== confirmPassword) {
+            setError("Passwords do not match.");
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const result = await resetPassword(id as string, token as string, password);
+
+            if (!result.success) {
+                setError(result.error ?? "Failed to reset password.");
+                return;
+            }
+
+            setDone(true);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
+        } finally {
+            setLoading(false);
+        }
+    }
 
     return (
         <div className="flex min-h-screen flex-col items-center justify-center bg-[#0A0B0D] p-6">
@@ -209,78 +120,190 @@ export default function ForgotPwd() {
                 }}
             />
             <div className="relative z-10 w-full max-w-[380px]">
-              
-                <div>
-                    <div className="relative rounded-2xl bg-gradient-to-br from-[#8B7FE8]/25 via-white/[0.06] to-[#22A67D]/25 p-px shadow-2xl shadow-black/50">
-                        <div className="rounded-[15px] bg-[#101215]/95 px-7 py-8 backdrop-blur-xl sm:px-9 sm:py-9">
-                            <div className="mb-4 hidden flex-col items-center gap-2.5 lg:flex">
-                                  <HeroMark />
-                            </div>
+                <div className="relative rounded-2xl bg-gradient-to-br from-[#8B7FE8]/25 via-white/[0.06] to-[#22A67D]/25 p-px shadow-2xl shadow-black/50">
+                    <div className="rounded-[15px] bg-[#101215]/95 px-7 py-8 backdrop-blur-xl sm:px-9 sm:py-9">
+                        <div className="mb-4 hidden flex-col items-center gap-2.5 lg:flex">
+                            <HeroMark />
+                        </div>
 
-                            <div className="mb-6 text-center">
-                                <h2 className="text-[19px] font-medium tracking-tight text-[#F4F3EF]">
-                                    {"Forgot Password"}
-                                </h2>
-                                <p className="mt-1.5 text-sm text-[#75777E]">
-                                    {
-                                        "Send reset password link on your email"
-                                       }
-                                </p>
-                            </div>
+                        <AnimatePresence mode="wait">
+                            {!hasLink ? (
+                                /* ---------------------------------------------- */
+                                /* No token in URL — ask for email, send link      */
+                                /* ---------------------------------------------- */
+                                linkSent ? (
+                                    <motion.div
+                                        key="link-sent"
+                                        initial={{ opacity: 0, y: 6 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="flex flex-col items-center gap-4 text-center"
+                                    >
+                                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/[0.04] border border-white/[0.08]">
+                                            <MailCheck className="h-6 w-6 text-[#22A67D]" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-[19px] font-medium tracking-tight text-[#F4F3EF]">
+                                                Check your inbox
+                                            </h2>
+                                            <p className="mt-1.5 text-sm text-[#75777E]">
+                                                If an account exists for{" "}
+                                                <span className="text-[#94969E]">{email}</span>, we've sent a
+                                                link to reset your password.
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => navigate("/auth")}
+                                            className="group mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#8B7FE8] to-[#22A67D] py-2.5 text-[14px] font-medium text-[#0A0B0D] shadow-lg shadow-[#8B7FE8]/10 transition-all hover:shadow-[#22A67D]/20 hover:brightness-[1.05]"
+                                        >
+                                            Back to sign in
+                                            <ChevronRightCircle className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                                        </button>
+                                    </motion.div>
+                                ) : (
+                                    <motion.div
+                                        key="request-link"
+                                        initial={{ opacity: 0, y: 6 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                    >
+                                        <div className="mb-6 text-center">
+                                            <h2 className="text-[19px] font-medium tracking-tight text-[#F4F3EF]">
+                                                Forgot Password
+                                            </h2>
+                                            <p className="mt-1.5 text-sm text-[#75777E]">
+                                                Enter your email and we'll send you a reset link.
+                                            </p>
+                                        </div>
 
-                          
+                                        <form onSubmit={handleRequestLink} className="space-y-3">
+                                            <Field
+                                                icon={Mail}
+                                                type="email"
+                                                placeholder="Work email"
+                                                value={email}
+                                                onChange={(e) => setEmail(e.target.value)}
+                                                autoComplete="email"
+                                                required
+                                            />
 
-                          
-                           
+                                            {error && <p className="text-sm text-[#E0685F]">{error}</p>}
 
-                           
-
-                            <AnimatePresence mode="wait">
-                                <motion.form
-                                    onSubmit={handleSubmit}
+                                            <button
+                                                type="submit"
+                                                disabled={loading}
+                                                className="group mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#8B7FE8] to-[#22A67D] py-2.5 text-[14px] font-medium text-[#0A0B0D] shadow-lg shadow-[#8B7FE8]/10 transition-all hover:shadow-[#22A67D]/20 hover:brightness-[1.05] disabled:opacity-60"
+                                            >
+                                                {loading ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <>
+                                                        Send reset link
+                                                        <ChevronRightCircle className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                                                    </>
+                                                )}
+                                            </button>
+                                        </form>
+                                    </motion.div>
+                                )
+                            ) : done ? (
+                                /* ---------------------------------------------- */
+                                /* Password successfully changed                   */
+                                /* ---------------------------------------------- */
+                                <motion.div
+                                    key="done"
                                     initial={{ opacity: 0, y: 6 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -6 }}
-                                    transition={{ duration: 0.18 }}
-                                    className="space-y-3"
+                                    className="flex flex-col items-center gap-4 text-center"
                                 >
-                                    
-
-                                    <Field
-                                        icon={Mail}
-                                        type="email"
-                                        placeholder="Work email"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        autoComplete="email"
-                                        required
-                                    />
-
-                                    
-
-                                    {error && <p className="text-sm text-[#E0685F]">{error}</p>}
-
-                                    
-
+                                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/[0.04] border border-white/[0.08]">
+                                        <CheckCircle2 className="h-6 w-6 text-[#22A67D]" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-[19px] font-medium tracking-tight text-[#F4F3EF]">
+                                            Password reset
+                                        </h2>
+                                        <p className="mt-1.5 text-sm text-[#75777E]">
+                                            Your password has been changed. You can now sign in.
+                                        </p>
+                                    </div>
                                     <button
-                                        type="submit"
-                                        disabled={loading}
-                                        className="group mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#8B7FE8] to-[#22A67D] py-2.5 text-[14px] font-medium text-[#0A0B0D] shadow-lg shadow-[#8B7FE8]/10 transition-all hover:shadow-[#22A67D]/20 hover:brightness-[1.05] disabled:opacity-60"
+                                        type="button"
+                                        onClick={() => navigate("/auth")}
+                                        className="group mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#8B7FE8] to-[#22A67D] py-2.5 text-[14px] font-medium text-[#0A0B0D] shadow-lg shadow-[#8B7FE8]/10 transition-all hover:shadow-[#22A67D]/20 hover:brightness-[1.05]"
                                     >
-                                        {loading ? (
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                        ) : (
-                                            <>
-                                                {"Continue"}
-                                                <ChevronRightCircle className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                                            </>
-                                        )}
+                                        Go to sign in
+                                        <ChevronRightCircle className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                                     </button>
+                                </motion.div>
+                            ) : (
+                                /* ---------------------------------------------- */
+                                /* Valid link — set new password                   */
+                                /* ---------------------------------------------- */
+                                <motion.div
+                                    key="reset-form"
+                                    initial={{ opacity: 0, y: 6 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                >
+                                    <div className="mb-6 text-center">
+                                        <h2 className="text-[19px] font-medium tracking-tight text-[#F4F3EF]">
+                                            Set a new password
+                                        </h2>
+                                        <p className="mt-1.5 text-sm text-[#75777E]">
+                                            Choose a strong password for your account.
+                                        </p>
+                                    </div>
 
+                                    <form onSubmit={handleResetSubmit} className="space-y-3">
+                                        <div className="relative">
+                                            <Field
+                                                icon={Lock}
+                                                type={showPassword ? "text" : "password"}
+                                                placeholder="New password"
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
+                                                autoComplete="new-password"
+                                                required
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword((v) => !v)}
+                                                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#55575F] transition-colors hover:text-[#94969E]"
+                                                aria-label={showPassword ? "Hide password" : "Show password"}
+                                            >
+                                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                            </button>
+                                        </div>
 
-                                </motion.form>
-                            </AnimatePresence>
-                        </div>
+                                        <Field
+                                            icon={Lock}
+                                            type={showPassword ? "text" : "password"}
+                                            placeholder="Confirm new password"
+                                            value={confirmPassword}
+                                            onChange={(e) => setConfirmPassword(e.target.value)}
+                                            autoComplete="new-password"
+                                            required
+                                        />
+
+                                        {error && <p className="text-sm text-[#E0685F]">{error}</p>}
+
+                                        <button
+                                            type="submit"
+                                            disabled={loading}
+                                            className="group mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#8B7FE8] to-[#22A67D] py-2.5 text-[14px] font-medium text-[#0A0B0D] shadow-lg shadow-[#8B7FE8]/10 transition-all hover:shadow-[#22A67D]/20 hover:brightness-[1.05] disabled:opacity-60"
+                                        >
+                                            {loading ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <>
+                                                    Reset Password
+                                                    <ChevronRightCircle className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                                                </>
+                                            )}
+                                        </button>
+                                    </form>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
                 </div>
             </div>

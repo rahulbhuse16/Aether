@@ -1,6 +1,6 @@
 import axios from "axios";
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { API_BASE } from "../constants/constants";
+import api from "../api/api";
 export type DeploymentArtifactType = "dockerfile" | "nginx" | "github-actions" | "kubernetes";
 
 export interface DeploymentArtifact {
@@ -59,10 +59,7 @@ export interface GetLatestDeploymentResponse {
 // block and import that instance instead — keep the interceptor logic.
 // -----------------------------------------------------------------------------
 
-const api = axios.create({
-  baseURL: API_BASE,
-  
-});
+
 
 
 
