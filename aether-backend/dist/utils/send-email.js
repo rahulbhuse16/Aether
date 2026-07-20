@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendWelcomeMail = sendWelcomeMail;
+exports.sendResetPasswordMail = sendResetPasswordMail;
 const nodemailer_1 = __importDefault(require("nodemailer"));
 const env_1 = require("../config/env");
 const transporter = nodemailer_1.default.createTransport({
@@ -331,6 +332,157 @@ font-size:13px;
     }
     catch (error) {
         console.error("Welcome email:", error);
+        return false;
+    }
+}
+const LOGO_URL_RESET = `${env_1.ENV.FRONTEND_URL}/aether_logo.png`;
+async function sendResetPasswordMail(email, resetUrl, name) {
+    try {
+        await transporter.sendMail({
+            from: `"Aether.ai" <${env_1.ENV.SMTP_FROM}>`,
+            to: email,
+            subject: "Reset your Aether password",
+            html: `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<title>Reset your password</title>
+</head>
+
+<body style="margin:0;padding:0;background:#F4F7FC;font-family:Arial,Helvetica,sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" bgcolor="#F4F7FC">
+<tr>
+<td align="center" style="padding:50px 20px;">
+
+<table width="600" cellpadding="0" cellspacing="0"
+style="background:#ffffff;border-radius:22px;overflow:hidden;
+box-shadow:0 10px 35px rgba(15,23,42,.08);">
+
+<!-- HERO -->
+<tr>
+<td
+align="center"
+style="
+padding:45px;
+background:linear-gradient(135deg,#2563EB 0%,#4F46E5 55%,#06B6D4 100%);
+">
+
+<img
+src="${LOGO_URL_RESET}"
+width="90"
+alt="Aether"
+style="display:block;margin-bottom:20px;">
+
+<div style="
+color:white;
+font-size:30px;
+font-weight:700;
+line-height:40px;
+">
+Reset your password
+</div>
+
+</td>
+</tr>
+
+<!-- BODY -->
+<tr>
+<td style="padding:50px;">
+
+<div style="
+font-size:17px;
+line-height:30px;
+color:#475569;
+">
+
+Hi${name ? ` ${name}` : ""},<br><br>
+
+We received a request to reset the password for your Aether account
+(<strong>${email}</strong>). Click the button below to choose a new password.
+
+</div>
+
+<div style="text-align:center;margin:40px 0 20px;">
+<a
+
+href="${resetUrl}"
+style="
+display:inline-block;
+padding:16px 40px;
+background:#2563EB;
+color:white;
+font-size:17px;
+font-weight:bold;
+text-decoration:none;
+border-radius:10px;
+">
+Reset Password
+</a>
+</div>
+
+<div style="
+font-size:14px;
+line-height:24px;
+color:#94A3B8;
+text-align:center;
+margin-top:10px;
+">
+This link expires in 1 hour. If you didn't request a password reset,
+you can safely ignore this email — your password will not be changed.
+</div>
+
+
+
+</td>
+</tr>
+
+<!-- FOOTER -->
+<tr>
+<td
+style="
+padding:35px;
+background:#F8FAFC;
+text-align:center;
+border-top:1px solid #E2E8F0;
+">
+
+<img
+src="${LOGO_URL_RESET}"
+width="36"
+style="margin-bottom:12px;">
+
+<div style="font-size:18px;font-weight:700;color:#111827;">
+Aether
+</div>
+
+<div style="margin-top:8px;color:#64748B;font-size:14px;">
+Build Smarter • Ship Faster • Powered by AI
+</div>
+
+<div style="margin-top:20px;color:#94A3B8;font-size:12px;">
+© ${new Date().getFullYear()} Aether.ai
+</div>
+
+</td>
+</tr>
+
+</table>
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>
+`,
+        });
+        return true;
+    }
+    catch (error) {
+        console.error("Reset password email:", error);
         return false;
     }
 }

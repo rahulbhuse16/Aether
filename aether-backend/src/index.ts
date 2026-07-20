@@ -16,11 +16,12 @@ import voiceEngineerRouter from './router/voice-engineer'
 import notificationsRouter from './router/notification'
 import meetingAgentRouter from './router/meeting-agent'
 import emailRouter from './router/email'
-import { sendWelcomeMail } from './utils/send-email'
+import cookieParser from 'cookie-parser'
 const app=express()
 app.use(cors())
 app.use(express.json())
 app.use(express.urlencoded({extended:true}))
+app.use(cookieParser()),
 
 
 app.use('/api/v1/auth',authRouter)
@@ -42,7 +43,7 @@ app.use('/api/v1/email',emailRouter)
 
 
 connectDB()
-sendWelcomeMail('rahulbhuse2019@gmail.com')
+
 
 app.listen(5000,()=>{
     console.log("running on port 5000")

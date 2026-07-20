@@ -5,8 +5,10 @@ import {
   getReportById,
   deleteReport,
 } from "../controller/bug-finder";
+import { verifyJWT } from "../middleware/auth";
 
 const bugRouter = Router();
+bugRouter.use(verifyJWT)
 
 bugRouter.post("/analyze", analyzeRepository);
 bugRouter.get("/reports-list/:id", getReports);

@@ -36,17 +36,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.User = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const UserSchema = new mongoose_1.Schema({
-    firebaseUid: {
-        type: String,
-        required: true,
-        unique: true,
-        index: true,
-    },
     email: {
         type: String,
         required: true,
+        unique: true,
         lowercase: true,
         trim: true,
+        index: true,
     },
     fullName: {
         type: String,
@@ -58,6 +54,32 @@ const UserSchema = new mongoose_1.Schema({
         default: "",
     },
     // -----------------------------
+    // Local email/password auth
+    // -----------------------------
+    passwordHash: {
+        type: String,
+    },
+    resetPasswordToken: {
+        type: String,
+    },
+    resetPasswordExpire: {
+        type: Date,
+    },
+    provider: {
+        type: String,
+        enum: ["local", "google", "github"],
+        required: true,
+        default: "local",
+    },
+    // -----------------------------
+    // Google Integration
+    // -----------------------------
+    googleId: {
+        type: String,
+        index: true,
+        sparse: true,
+    },
+    // -----------------------------
     // GitHub Integration
     // -----------------------------
     githubConnected: {
@@ -65,8 +87,9 @@ const UserSchema = new mongoose_1.Schema({
         default: false,
     },
     githubId: {
-        type: Number,
-        default: null,
+        type: String,
+        index: true,
+        sparse: true,
     },
     githubUsername: {
         type: String,

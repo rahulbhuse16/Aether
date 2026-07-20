@@ -1,13 +1,24 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IUser extends Document {
-  firebaseUid: string;
   email: string;
   fullName: string;
   profileImage?: string;
 
+  // Local email/password auth
+  passwordHash?: string;
+  resetPasswordToken?: string;
+  resetPasswordExpire?: Date;
+
+  // Provider tracking
+  provider: "local" | "google" | "github";
+
+  // Google
+  googleId?: string;
+
+  // GitHub
   githubConnected: boolean;
-  githubId?: number;
+  githubId?: string;
   githubUsername?: string;
   githubAvatar?: string;
   githubAccessToken?: string;
@@ -18,18 +29,13 @@ export interface IUser extends Document {
 
 const UserSchema = new Schema<IUser>(
   {
-    firebaseUid: {
-      type: String,
-      required: true,
-      unique: true,
-      index: true,
-    },
-
     email: {
       type: String,
       required: true,
+      unique: true,
       lowercase: true,
       trim: true,
+      index: true,
     },
 
     fullName: {
@@ -44,6 +50,37 @@ const UserSchema = new Schema<IUser>(
     },
 
     // -----------------------------
+    // Local email/password auth
+    // -----------------------------
+    passwordHash: {
+      type: String,
+    },
+
+    resetPasswordToken: {
+      type: String,
+    },
+
+    resetPasswordExpire: {
+      type: Date,
+    },
+
+    provider: {
+      type: String,
+      enum: ["local", "google", "github"],
+      required: true,
+      default: "local",
+    },
+
+    // -----------------------------
+    // Google Integration
+    // -----------------------------
+    googleId: {
+      type: String,
+      index: true,
+      sparse: true,
+    },
+
+    // -----------------------------
     // GitHub Integration
     // -----------------------------
     githubConnected: {
@@ -52,8 +89,9 @@ const UserSchema = new Schema<IUser>(
     },
 
     githubId: {
-      type: Number,
-      default: null,
+      type: String,
+      index: true,
+      sparse: true,
     },
 
     githubUsername: {
@@ -76,4 +114,4 @@ const UserSchema = new Schema<IUser>(
   }
 );
 
-export const User= mongoose.model<IUser>("User", UserSchema);
+export const User = mongoose.model<IUser>("User", UserSchema);

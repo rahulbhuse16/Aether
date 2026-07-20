@@ -21,12 +21,13 @@ const voice_engineer_1 = __importDefault(require("./router/voice-engineer"));
 const notification_1 = __importDefault(require("./router/notification"));
 const meeting_agent_1 = __importDefault(require("./router/meeting-agent"));
 const email_1 = __importDefault(require("./router/email"));
-const send_email_1 = require("./utils/send-email");
+const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
-app.use('/api/v1/auth', auth_1.default);
+app.use((0, cookie_parser_1.default)()),
+    app.use('/api/v1/auth', auth_1.default);
 app.use('/api/v1/projects', project_1.default);
 app.use('/api/v1/github', github_1.default);
 app.use('/api/v1/dashboard', dashboard_1.default);
@@ -42,7 +43,6 @@ app.use('/api/v1/notifications', notification_1.default);
 app.use('/api/v1/meetings', meeting_agent_1.default);
 app.use('/api/v1/email', email_1.default);
 (0, connectDB_1.connectDB)();
-(0, send_email_1.sendWelcomeMail)('rahulbhuse2019@gmail.com');
 app.listen(5000, () => {
     console.log("running on port 5000");
 });

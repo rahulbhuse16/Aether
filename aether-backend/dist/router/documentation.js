@@ -2,7 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const documentation_1 = require("../controller/documentation");
+const auth_1 = require("../middleware/auth");
 const docsRouter = (0, express_1.Router)();
+docsRouter.use(auth_1.verifyJWT);
 docsRouter.post("/generate", documentation_1.generateDocs);
 docsRouter.post("/regenerate", documentation_1.regenerateDoc);
 docsRouter.get("/latest", documentation_1.getLatestDocsSession);

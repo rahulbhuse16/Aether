@@ -2,7 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const api_agent_1 = require("../controller/api-agent");
+const auth_1 = require("../middleware/auth");
 const apiAgentRouter = (0, express_1.Router)();
+apiAgentRouter.use(auth_1.verifyJWT);
 apiAgentRouter.post("/generate", api_agent_1.generateArtifacts);
 apiAgentRouter.post("/regenerate", api_agent_1.regenerateArtifact);
 apiAgentRouter.get("/latest", api_agent_1.getLatestSession);

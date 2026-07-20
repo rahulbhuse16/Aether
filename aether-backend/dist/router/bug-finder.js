@@ -2,7 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const bug_finder_1 = require("../controller/bug-finder");
+const auth_1 = require("../middleware/auth");
 const bugRouter = (0, express_1.Router)();
+bugRouter.use(auth_1.verifyJWT);
 bugRouter.post("/analyze", bug_finder_1.analyzeRepository);
 bugRouter.get("/reports-list/:id", bug_finder_1.getReports);
 bugRouter.get("/reports/:id", bug_finder_1.getReportById);

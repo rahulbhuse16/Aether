@@ -2,7 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const meeting_agent_1 = require("../controller/meeting-agent");
+const auth_1 = require("../middleware/auth");
 const meetingAgentRouter = (0, express_1.Router)();
+meetingAgentRouter.use(auth_1.verifyJWT);
 meetingAgentRouter.post('/upload', meeting_agent_1.uploadMeeting);
 meetingAgentRouter.post('/:meetingId/jira', meeting_agent_1.createJiraTickets);
 meetingAgentRouter.post('/meetingId/email', meeting_agent_1.emailMeetingSummary);

@@ -4,8 +4,10 @@ import {
   regenerateDeploymentArtifact,
   getLatestDeploymentSession,
 } from "../controller/deployment";
+import { verifyJWT } from "../middleware/auth";
 
 const deployRouter = Router();
+deployRouter.use(verifyJWT)
 
 deployRouter.post("/generate", generateDeploymentArtifacts);
 deployRouter.post("/regenerate", regenerateDeploymentArtifact);
