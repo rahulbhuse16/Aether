@@ -1,4 +1,7 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.syncDBfromWebhook = void 0;
 exports.syncIssuesFromGithub = syncIssuesFromGithub;
@@ -8,6 +11,7 @@ exports.createGithubIssueForTask = createGithubIssueForTask;
 exports.upsertTaskFromWebhookIssue = upsertTaskFromWebhookIssue;
 const rest_1 = require("@octokit/rest");
 const task_1 = require("../models/task");
+const mongoose_1 = __importDefault(require("mongoose"));
 /**
  * IMPORTANT — this file assumes two schema additions that weren't in the
  * original Task model (see the note at the bottom of this file for the
@@ -170,6 +174,7 @@ const syncDBfromWebhook = async (user, project, issue, action) => {
     switch (action) {
         case "opened": {
             // Create task only if it does not already exist
+            const id = `t-${new mongoose_1.default.Types.ObjectId().toHexString()}`;
             try {
                 return await task_1.Task.create({
                     title: issue.title,
@@ -181,6 +186,7 @@ const syncDBfromWebhook = async (user, project, issue, action) => {
                     githubIssueNumber: issue.number,
                     githubIssueUrl: issue.html_url,
                     githubIssueId: githubIssueIdValue,
+                    id
                 });
             }
             catch (error) {

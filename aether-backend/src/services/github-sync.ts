@@ -3,6 +3,7 @@ import { ITask, Task } from "../models/task";
 import { IProject } from "../models/project";
 import { IUser } from "../models/user";
 import { StringDecoder } from "node:string_decoder";
+import mongoose from "mongoose";
 
 /**
  * IMPORTANT — this file assumes two schema additions that weren't in the
@@ -191,38 +192,43 @@ export const syncDBfromWebhook = async (
   const githubIssueIdValue = githubIssueId(project, issue.number);
 
   console.log("action", action)
-  console.log("project",project)
-  console.log("id",user._id)
+  console.log("project", project)
+  console.log("id", user._id)
 
   switch (action) {
     case "opened": {
       // Create task only if it does not already exist
-     
 
-       try {
-    return await Task.create({
-      title: issue.title,
-      status: issueStatusToTaskStatus(issue),
-      source: "github",
-      priority: priorityFromLabels(issue.labels),
-      user: user._id,
-      project: project._id,
-      githubIssueNumber: issue.number,
-      githubIssueUrl: issue.html_url,
-      githubIssueId: githubIssueIdValue,
-    });
-  } catch (error) {
-    console.error(
-      `Failed to create task for user ${user._id}, issue #${issue.number}:`,
-      error
-    );
 
-    return null;
-  }
+      const id = `t-${new mongoose.Types.ObjectId().toHexString()}`;
+
+
+
+      try {
+        return await Task.create({
+          title: issue.title,
+          status: issueStatusToTaskStatus(issue),
+          source: "github",
+          priority: priorityFromLabels(issue.labels),
+          user: user._id,
+          project: project._id,
+          githubIssueNumber: issue.number,
+          githubIssueUrl: issue.html_url,
+          githubIssueId: githubIssueIdValue,
+          id
+        });
+      } catch (error) {
+        console.error(
+          `Failed to create task for user ${user._id}, issue #${issue.number}:`,
+          error
+        );
+
+        return null;
+      }
     }
 
-    case "closed":{
-            return await upsertTaskFromWebhookIssue(user, project, issue);
+    case "closed": {
+      return await upsertTaskFromWebhookIssue(user, project, issue);
 
 
     }
