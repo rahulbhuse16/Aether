@@ -449,7 +449,7 @@ export const githubCallback = async (req: Request, res: Response): Promise<void>
 
     if (source === 'onboarding') {
 
-      await connectGithubAccount(randomState, accessToken)
+      await connectGithubAccount(user._id.toString(), accessToken)
     }
 
     res.redirect(`${FRONTEND_URL}/oauth/callback?token=${token}&userId=${user._id}`);

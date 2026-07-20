@@ -367,7 +367,7 @@ const githubCallback = async (req, res) => {
         }
         const token = issueToken(user._id.toString());
         if (source === 'onboarding') {
-            await (0, github_sync_1.connectGithubAccount)(randomState, accessToken);
+            await (0, github_sync_1.connectGithubAccount)(user._id.toString(), accessToken);
         }
         res.redirect(`${FRONTEND_URL}/oauth/callback?token=${token}&userId=${user._id}`);
     }

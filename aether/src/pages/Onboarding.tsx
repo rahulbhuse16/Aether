@@ -72,7 +72,7 @@ function ConnectStep({ onConnected }: { onConnected: () => void }) {
       // run before that happens. Step 2 is reached instead via the
       // `success=true` redirect param once GitHub sends the user back
       // (see initialStep in the component below).
-      window.location.href = `${API_BASE}/auth/github/connect?state=${userId}&source=onboarding`;
+      window.location.href = `${API_BASE}/auth/github?state=${userId}&source=onboarding`;
       onConnected();
       await loadUser();
     } catch {
