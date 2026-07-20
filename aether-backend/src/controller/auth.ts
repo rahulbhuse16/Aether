@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 import { User } from "../models/user";
 import { sendWelcomeMail, sendResetPasswordMail } from "../utils/send-email";
 import { ENV } from "../config/env";
-import { connectGithubAccount } from "../services/github-sync";
+import { connectGithubAccount } from "../services/github-connect";
 
 const {
   GOOGLE_CLIENT_ID,

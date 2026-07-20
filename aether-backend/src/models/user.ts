@@ -25,6 +25,7 @@ export interface IUser extends Document {
 
   createdAt: Date;
   updatedAt: Date;
+
 }
 
 const UserSchema = new Schema<IUser>(

@@ -5,17 +5,20 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "nodemon --watch src -r tsconfig-paths/register --exec ts-node src/index.ts"
+    "dev": "nodemon --watch src -r tsconfig-paths/register --exec ts-node src/index.ts",
+    "test": "cross-env ENVFILE=dev.env nodemon --watch src -r tsconfig-paths/register --exec ts-node src/index.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@octokit/rest": "^22.0.1",
     "axios": "^1.18.1",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
+    "cross-env": "^10.1.0",
     "dotenv": "^17.4.2",
     "express": "^4.19.2",
     "groq-sdk": "^0.5.0",
