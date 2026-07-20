@@ -188,6 +188,7 @@ export const syncDBfromWebhook = async (
   issue: any,
   action: "deleted" | "reopened" | "closed" | "opened"
 ) => {
+  console.log("syncDBfromWebhook",issue,action,user,project)
   const githubIssueIdValue = githubIssueId(project, issue.number);
 
   switch (action) {

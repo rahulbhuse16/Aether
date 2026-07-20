@@ -257,12 +257,14 @@ export const githubWebhookController = async (
  
     // A repo is only synced for the user(s) who connected it as a Project.
     const projects = await Project.find({ githubRepoId: repoId });
+    console.log("projects",projects)
     if (!projects.length) return res.status(200).json({ received: true });
  
     if (event === "issues" && payload.issue) {
       await Promise.allSettled(
         projects.map(async (project) => {
           const user = await User.findById(project.owner).select("+githubAccessToken");
+          console.log("user",user)
           if (!user) return;
           await syncDBfromWebhook(user, project, payload.issue,payload.action);
         })
