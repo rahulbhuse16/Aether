@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.syncDBfromWebhook = void 0;
 exports.syncIssuesFromGithub = syncIssuesFromGithub;
 exports.syncAllProjectsFromGithub = syncAllProjectsFromGithub;
 exports.pushTaskStatusToGithub = pushTaskStatusToGithub;
@@ -161,3 +162,46 @@ async function upsertTaskFromWebhookIssue(user, project, issue) {
         githubIssueId: id,
     }, { upsert: true, new: true });
 }
+const syncDBfromWebhook = async (user, project, issue, action) => {
+    const githubIssueIdValue = githubIssueId(project, issue.number);
+    switch (action) {
+        case "opened": {
+            // Create task only if it does not already exist
+            const existingTask = await task_1.Task.findOne({
+                githubIssueId: githubIssueIdValue,
+                user: user._id,
+                project: project._id,
+            });
+            if (existingTask) {
+                return existingTask;
+            }
+            return await task_1.Task.create({
+                title: issue.title,
+                status: issueStatusToTaskStatus(issue),
+                source: "github",
+                priority: priorityFromLabels(issue.labels),
+                user: user._id,
+                project: project._id,
+                githubIssueNumber: issue.number,
+                githubIssueUrl: issue.html_url,
+                githubIssueId: githubIssueIdValue,
+            });
+        }
+        case "closed": {
+            return await upsertTaskFromWebhookIssue(user, project, issue);
+        }
+        case "reopened": {
+            return await upsertTaskFromWebhookIssue(user, project, issue);
+        }
+        case "deleted": {
+            return await task_1.Task.findOneAndDelete({
+                githubIssueId: githubIssueIdValue,
+                user: user._id,
+                project: project._id,
+            });
+        }
+        default:
+            return null;
+    }
+};
+exports.syncDBfromWebhook = syncDBfromWebhook;

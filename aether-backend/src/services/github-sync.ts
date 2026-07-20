@@ -181,3 +181,59 @@ export async function upsertTaskFromWebhookIssue(user: IUser, project: IProject,
     { upsert: true, new: true }
   );
 }
+
+export const syncDBfromWebhook = async (
+  user: IUser,
+  project: IProject,
+  issue: any,
+  action: "deleted" | "reopened" | "closed" | "opened"
+) => {
+  const githubIssueIdValue = githubIssueId(project, issue.number);
+
+  switch (action) {
+    case "opened": {
+      // Create task only if it does not already exist
+      const existingTask = await Task.findOne({
+        githubIssueId: githubIssueIdValue,
+        user: user._id,
+        project: project._id,
+      });
+
+      if (existingTask) {
+        return existingTask;
+      }
+
+      return await Task.create({
+        title: issue.title,
+        status: issueStatusToTaskStatus(issue),
+        source: "github",
+        priority: priorityFromLabels(issue.labels),
+        user: user._id,
+        project: project._id,
+        githubIssueNumber: issue.number,
+        githubIssueUrl: issue.html_url,
+        githubIssueId: githubIssueIdValue,
+      });
+    }
+
+    case "closed":{
+            return await upsertTaskFromWebhookIssue(user, project, issue);
+
+
+    }
+    case "reopened": {
+      return await upsertTaskFromWebhookIssue(user, project, issue);
+    }
+
+    case "deleted": {
+      return await Task.findOneAndDelete({
+        githubIssueId: githubIssueIdValue,
+        user: user._id,
+        project: project._id,
+      });
+    }
+
+    default:
+      return null;
+  }
+};

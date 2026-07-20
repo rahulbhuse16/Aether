@@ -1,7 +1,7 @@
 import { ENV } from "../config/env";
 import axios from "axios";
 import { Request, Response } from "express";
-import { upsertTaskFromWebhookIssue } from "../services/github-sync";
+import { syncDBfromWebhook, upsertTaskFromWebhookIssue } from "../services/github-sync";
 import { User } from "../models/user";
 import crypto from "crypto";
 import { Project } from "../models/project";
@@ -264,7 +264,7 @@ export const githubWebhookController = async (
         projects.map(async (project) => {
           const user = await User.findById(project.owner).select("+githubAccessToken");
           if (!user) return;
-          await upsertTaskFromWebhookIssue(user, project, payload.issue);
+          await syncDBfromWebhook(user, project, payload.issue,payload.action);
         })
       );
     }

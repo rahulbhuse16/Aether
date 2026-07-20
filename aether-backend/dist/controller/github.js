@@ -191,7 +191,7 @@ const githubWebhookController = async (req, res) => {
                 const user = await user_1.User.findById(project.owner).select("+githubAccessToken");
                 if (!user)
                     return;
-                await (0, github_sync_1.upsertTaskFromWebhookIssue)(user, project, payload.issue);
+                await (0, github_sync_1.syncDBfromWebhook)(user, project, payload.issue, payload.action);
             }));
         }
         // We subscribe to push / pull_request / issue_comment / create / delete /
