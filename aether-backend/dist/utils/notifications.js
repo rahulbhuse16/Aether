@@ -36,47 +36,75 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildGithubNotification = exports.saveNotification = void 0;
 const notification_1 = __importStar(require("../models/notification"));
 const sse_1 = require("../services/sse");
+// =====================================================
+// SAVE NOTIFICATION
+// =====================================================
 const saveNotification = async (payload) => {
-    const { userId, type, priority, title, description, href, metadata, } = payload;
-    /**
-     * Prevent duplicate USAGE notifications
-     * Only allow one usage notification per user per day.
-     */
-    if (type === notification_1.NotificationType.USAGE) {
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date();
-        endOfDay.setHours(23, 59, 59, 999);
-        const alreadyExists = await notification_1.default.findOne({
+    try {
+        const { userId, type, priority, title, description, href, metadata, } = payload;
+        // =================================================
+        // PREVENT DUPLICATE USAGE NOTIFICATIONS
+        // =================================================
+        if (type === notification_1.NotificationType.USAGE) {
+            const startOfDay = new Date();
+            startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date();
+            endOfDay.setHours(23, 59, 59, 999);
+            const alreadyExists = await notification_1.default.findOne({
+                userId,
+                type,
+                createdAt: {
+                    $gte: startOfDay,
+                    $lte: endOfDay,
+                },
+            });
+            if (alreadyExists) {
+                return alreadyExists;
+            }
+        }
+        // =================================================
+        // CREATE NOTIFICATION
+        // =================================================
+        const notification = await notification_1.default.create({
             userId,
             type,
-            createdAt: {
-                $gte: startOfDay,
-                $lte: endOfDay,
-            },
+            priority: priority ??
+                notification_1.NotificationPriority.MEDIUM,
+            title,
+            description,
+            href,
+            metadata,
+            read: false,
         });
-        if (alreadyExists) {
-            return alreadyExists;
-        }
+        // =================================================
+        // SEND REAL-TIME SSE EVENT
+        // =================================================
+        (0, sse_1.sendSseEvent)(userId, "notification", notification);
+        return notification;
     }
-    /**
-     * Save notification
-     */
-    const notification = await notification_1.default.create({
-        userId,
-        type,
-        priority,
-        title,
-        description,
-        href,
-        metadata,
-        read: false,
-    });
-    /**
-     * Send real-time notification
-     */
-    (0, sse_1.sendSseEvent)(userId, "notification", notification);
-    return notification;
+    catch (error) {
+        // =================================================
+        // MONGOOSE VALIDATION ERROR
+        // =================================================
+        if (error?.name ===
+            "ValidationError") {
+            console.error("Notification validation error:", error.errors);
+        }
+        // =================================================
+        // DUPLICATE KEY ERROR
+        // =================================================
+        else if (error?.code === 11000) {
+            console.error("Duplicate notification error:", error);
+        }
+        // =================================================
+        // GENERAL ERROR
+        // =================================================
+        else {
+            console.error("Failed to save notification:", error);
+        }
+        // Do not crash the webhook or main process
+        return null;
+    }
 };
 exports.saveNotification = saveNotification;
 const buildGithubNotification = (event, action, payload) => {

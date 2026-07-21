@@ -53,23 +53,7 @@ const NotificationSchema = new mongoose_1.Schema({
         default: false,
         index: true,
     },
-    source: {
-        type: String,
-        enum: [
-            "github",
-            "groq",
-            "jira",
-            "repository",
-            "deployment",
-            "agent",
-            "system",
-        ],
-        required: true,
-    },
     href: {
-        type: String,
-    },
-    icon: {
         type: String,
     },
     metadata: {

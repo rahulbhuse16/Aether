@@ -12,66 +12,171 @@ export interface IPayload {
   description: string;
   href?: string;
   metadata?: Record<string, any>;
+
+  
+
 }
+
+
+
+
+// =====================================================
+// SAVE NOTIFICATION
+// =====================================================
 
 export const saveNotification = async (
   payload: IPayload
 ) => {
-  const {
-    userId,
-    type,
-    priority,
-    title,
-    description,
-    href,
-    metadata,
-  } = payload;
-
-  /**
-   * Prevent duplicate USAGE notifications
-   * Only allow one usage notification per user per day.
-   */
-  if (type === NotificationType.USAGE) {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const alreadyExists = await Notification.findOne({
+  try {
+    const {
       userId,
       type,
-      createdAt: {
-        $gte: startOfDay,
-        $lte: endOfDay,
-      },
-    });
+      priority,
+      title,
+      description,
+      href,
+      metadata,
+    } = payload;
 
-    if (alreadyExists) {
-      return alreadyExists;
+
+    // =================================================
+    // PREVENT DUPLICATE USAGE NOTIFICATIONS
+    // =================================================
+
+    if (
+      type === NotificationType.USAGE
+    ) {
+      const startOfDay =
+        new Date();
+
+      startOfDay.setHours(
+        0,
+        0,
+        0,
+        0
+      );
+
+
+      const endOfDay =
+        new Date();
+
+      endOfDay.setHours(
+        23,
+        59,
+        59,
+        999
+      );
+
+
+      const alreadyExists =
+        await Notification.findOne({
+          userId,
+
+          type,
+
+          createdAt: {
+            $gte: startOfDay,
+
+            $lte: endOfDay,
+          },
+        });
+
+
+      if (alreadyExists) {
+        return alreadyExists;
+      }
     }
+
+
+    // =================================================
+    // CREATE NOTIFICATION
+    // =================================================
+
+    const notification =
+      await Notification.create({
+        userId,
+
+        type,
+
+        priority:
+          priority ??
+          NotificationPriority.MEDIUM,
+
+        title,
+
+        description,
+
+
+        href,
+
+
+        metadata,
+
+        read: false,
+      });
+
+
+    // =================================================
+    // SEND REAL-TIME SSE EVENT
+    // =================================================
+
+    sendSseEvent(
+      userId,
+
+      "notification",
+
+      notification
+    );
+
+
+    return notification;
+
+  } catch (error: any) {
+
+    // =================================================
+    // MONGOOSE VALIDATION ERROR
+    // =================================================
+
+    if (
+      error?.name ===
+      "ValidationError"
+    ) {
+      console.error(
+        "Notification validation error:",
+        error.errors
+      );
+    }
+
+
+    // =================================================
+    // DUPLICATE KEY ERROR
+    // =================================================
+
+    else if (
+      error?.code === 11000
+    ) {
+      console.error(
+        "Duplicate notification error:",
+        error
+      );
+    }
+
+
+    // =================================================
+    // GENERAL ERROR
+    // =================================================
+
+    else {
+      console.error(
+        "Failed to save notification:",
+        error
+      );
+    }
+
+
+    // Do not crash the webhook or main process
+    return null;
   }
-
-  /**
-   * Save notification
-   */
-  const notification = await Notification.create({
-    userId,
-    type,
-    priority,
-    title,
-    description,
-    href,
-    metadata,
-    read: false,
-  });
-
-  /**
-   * Send real-time notification
-   */
-  sendSseEvent(userId, "notification", notification);
-
-  return notification;
 };
 
 
