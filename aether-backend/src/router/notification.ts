@@ -7,7 +7,7 @@ const notificationsRouter = Router();
 
 notificationsRouter.get("/stream/:userId", notificationsSSE);
 notificationsRouter.get("/:id",verifyJWT, getUserNotifications)
-notificationsRouter.patch("/:id/:notificationId",verifyJWT,markNotificationAsRead)
+notificationsRouter.patch("/:id/:notificationId/read",verifyJWT,markNotificationAsRead)
 
 
 export default notificationsRouter;
