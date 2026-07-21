@@ -7,6 +7,9 @@ import crypto from "crypto";
 import { Project } from "../models/project";
 import { formatTimeAgo } from "../utils/helper";
 import { connectGithubAccount } from "../services/github-connect";
+import { buildGithubNotification, saveNotification } from "../utils/notifications";
+import { NotificationType } from "../models/notification";
+import { sendSseEvent } from "../services/sse";
 
 
 
@@ -283,7 +286,29 @@ export const githubWebhookController = async (
             payload.issue,
             payload.action
           );
+
+          const notification = buildGithubNotification(
+            event!,
+            payload.action,
+            payload,
+          );
+
+          if (notification) {
+            const savedNotification = await saveNotification({
+              userId: user._id.toString(),
+              ...notification,
+            });
+
+            sendSseEvent(
+              user._id.toString(),
+              "notification",
+              savedNotification
+            );
+          }
+
         })
+
+
       );
     }
 

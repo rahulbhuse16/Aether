@@ -11,6 +11,8 @@ const user_1 = require("../models/user");
 const crypto_1 = __importDefault(require("crypto"));
 const project_1 = require("../models/project");
 const github_connect_1 = require("../services/github-connect");
+const notifications_1 = require("../utils/notifications");
+const sse_1 = require("../services/sse");
 /**
  * Redirect user to GitHub OAuth
  * GET /api/github/connect
@@ -198,6 +200,14 @@ const githubWebhookController = async (req, res) => {
                     return;
                 }
                 await (0, github_sync_1.syncDBfromWebhook)(user, project, payload.issue, payload.action);
+                const notification = (0, notifications_1.buildGithubNotification)(event, payload.action, payload);
+                if (notification) {
+                    const savedNotification = await (0, notifications_1.saveNotification)({
+                        userId: user._id.toString(),
+                        ...notification,
+                    });
+                    (0, sse_1.sendSseEvent)(user._id.toString(), "notification", savedNotification);
+                }
             }));
         }
         // We subscribe to push / pull_request / issue_comment / create / delete /
