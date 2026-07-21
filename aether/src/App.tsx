@@ -7,7 +7,7 @@ import { useSSENotification } from './hooks/useSSENotification'
 
 function App() {
 
- // useSSENotification()
+  useSSENotification()
 
   useEffect(()=>{
     const token=localStorage.getItem('token')

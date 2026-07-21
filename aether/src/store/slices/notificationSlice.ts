@@ -1,79 +1,359 @@
-// Path: src/store/notificationsSlice.ts
-//
-// Shared because the unread badge in AppShell's topbar and the dropdown
-// panel both need the same data — same reasoning as tasksSlice.
+import {
+  createSlice,
+  type PayloadAction,
+} from "@reduxjs/toolkit";
+import { fetchUserNotifications, markNotificationAsRead } from "../../services/notifications";
 
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
-export type NotificationType = "review" | "agent" | "budget" | "meeting";
+
+
+// =====================================================
+// TYPES
+// =====================================================
+
+export type NotificationType =
+  | "ai"
+  | "github"
+  | "jira"
+  | "repository"
+  | "deployment"
+  | "security"
+  | "usage"
+  | "billing"
+  | "agent"
+  | "system";
+
+export type NotificationPriority =
+  | "low"
+  | "medium"
+  | "high"
+  | "critical";
 
 export interface AppNotification {
-  id: string;
+  _id: string;
+
+  userId: string;
+
   type: NotificationType;
+
+  priority: NotificationPriority;
+
   title: string;
+
   description: string;
-  time: string;
+
   read: boolean;
+
+  source: string;
+
   href?: string;
+
+  icon?: string;
+
+  metadata?: Record<string, unknown>;
+
+  createdAt: string;
+
+  updatedAt: string;
 }
 
-type NotificationsState = AppNotification[];
 
-const initialState: NotificationsState = [
-  {
-    id: "n1",
-    type: "agent",
-    title: "Code review agent finished",
-    description: "PR #42 reviewed — 2 issues flagged, 1 suggestion.",
-    time: "2m ago",
-    read: false,
-    href: "/reviews",
+export interface NotificationsPagination {
+  total: number;
+
+  page: number;
+
+  limit: number;
+
+  totalPages: number;
+}
+
+
+export interface NotificationsState {
+  notifications: AppNotification[];
+
+  pagination: NotificationsPagination;
+
+  unreadCount: number;
+
+  loading: boolean;
+
+  error: string | null;
+
+  markingAsRead: boolean;
+}
+
+
+// =====================================================
+// INITIAL STATE
+// =====================================================
+
+const initialState: NotificationsState = {
+  notifications: [],
+
+  pagination: {
+    total: 0,
+    page: 1,
+    limit: 20,
+    totalPages: 0,
   },
-  {
-    id: "n2",
-    type: "budget",
-    title: "AI budget at 80%",
-    description: "Aether Core has used 80% of this month's AI credits.",
-    time: "1h ago",
-    read: false,
-    href: "/settings",
-  },
-  {
-    id: "n3",
-    type: "meeting",
-    title: "Meeting processed",
-    description: "\"Sprint planning\" — 4 action items created in Jira.",
-    time: "3h ago",
-    read: true,
-    href: "/meetings",
-  },
-  {
-    id: "n4",
-    type: "review",
-    title: "New comment on PR #38",
-    description: "Reviewer requested changes on the auth middleware.",
-    time: "Yesterday",
-    read: true,
-    href: "/reviews",
-  },
-];
+
+  unreadCount: 0,
+
+  loading: false,
+
+  error: null,
+
+  markingAsRead: false,
+};
+
+
+// =====================================================
+// SLICE
+// =====================================================
 
 const notificationsSlice = createSlice({
   name: "notifications",
+
   initialState,
+
   reducers: {
-    markAsRead: (state, action: PayloadAction<string>) => {
-      const n = state.find((n) => n.id === action.payload);
-      if (n) n.read = true;
+
+    /**
+     * Add a new real-time notification
+     * received through SSE
+     */
+    addNotification: (
+      state,
+      action: PayloadAction<AppNotification>
+    ) => {
+      const notification = action.payload;
+
+      // Prevent duplicate notifications
+      const alreadyExists = state.notifications.some(
+        (item) => item._id === notification._id
+      );
+
+      if (alreadyExists) {
+        return;
+      }
+
+      state.notifications.unshift(notification);
+
+      state.pagination.total += 1;
+
+      if (!notification.read) {
+        state.unreadCount += 1;
+      }
     },
+
+
+    /**
+     * Mark notification as read locally
+     */
+    markAsRead: (
+      state,
+      action: PayloadAction<string>
+    ) => {
+      const notification = state.notifications.find(
+        (item) => item._id === action.payload
+      );
+
+      if (
+        notification &&
+        !notification.read
+      ) {
+        notification.read = true;
+
+        if (state.unreadCount > 0) {
+          state.unreadCount -= 1;
+        }
+      }
+    },
+
+
+    /**
+     * Mark all notifications as read locally
+     */
     markAllAsRead: (state) => {
-      state.forEach((n) => (n.read = true));
+      state.notifications.forEach(
+        (notification) => {
+          notification.read = true;
+        }
+      );
+
+      state.unreadCount = 0;
     },
-    addNotification: (state, action: PayloadAction<AppNotification>) => {
-      state.unshift(action.payload);
+
+
+    /**
+     * Clear notifications
+     */
+    clearNotifications: (state) => {
+      state.notifications = [];
+
+      state.pagination = {
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 0,
+      };
+
+      state.unreadCount = 0;
     },
+  },
+
+
+  extraReducers: (builder) => {
+
+    // =================================================
+    // FETCH NOTIFICATIONS
+    // =================================================
+
+    builder
+
+      .addCase(
+        fetchUserNotifications.pending,
+        (state) => {
+          state.loading = true;
+
+          state.error = null;
+        }
+      )
+
+
+      .addCase(
+        fetchUserNotifications.fulfilled,
+        (state, action) => {
+          state.loading = false;
+
+          const response = action.payload;
+
+          state.notifications =
+            response.data.notifications;
+
+          state.pagination =
+            response.data.pagination;
+
+          state.unreadCount =
+            response.data.unreadCount;
+        }
+      )
+
+
+      .addCase(
+        fetchUserNotifications.rejected,
+        (state, action) => {
+          state.loading = false;
+
+          state.error =
+            action.payload ??
+            "Failed to fetch notifications";
+        }
+      );
+
+
+    // =================================================
+    // MARK NOTIFICATION AS READ
+    // =================================================
+
+    builder
+
+      .addCase(
+        markNotificationAsRead.pending,
+        (state) => {
+          state.markingAsRead = true;
+        }
+      )
+
+
+      .addCase(
+        markNotificationAsRead.fulfilled,
+        (
+          state,
+          action
+        ) => {
+          state.markingAsRead = false;
+
+          const notification =
+            action.payload.notification;
+
+          const existingNotification =
+            state.notifications.find(
+              (item) =>
+                item._id === notification._id
+            );
+
+          if (
+            existingNotification &&
+            !existingNotification.read
+          ) {
+            existingNotification.read = true;
+
+            if (state.unreadCount > 0) {
+              state.unreadCount -= 1;
+            }
+          }
+        }
+      )
+
+
+      .addCase(
+        markNotificationAsRead.rejected,
+        (state) => {
+          state.markingAsRead = false;
+        }
+      );
   },
 });
 
-export const { markAsRead, markAllAsRead, addNotification } = notificationsSlice.actions;
+
+// =====================================================
+// ACTIONS
+// =====================================================
+
+export const {
+  addNotification,
+  markAsRead,
+  markAllAsRead,
+  clearNotifications,
+} = notificationsSlice.actions;
+
+
+// =====================================================
+// SELECTORS
+// =====================================================
+
+export const selectNotifications = (
+  state: {
+    notifications: NotificationsState;
+  }
+) => state.notifications.notifications;
+
+
+export const selectUnreadCount = (
+  state: {
+    notifications: NotificationsState;
+  }
+) => state.notifications.unreadCount;
+
+
+export const selectNotificationsLoading = (
+  state: {
+    notifications: NotificationsState;
+  }
+) => state.notifications.loading;
+
+
+export const selectNotificationsError = (
+  state: {
+    notifications: NotificationsState;
+  }
+) => state.notifications.error;
+
+
+// =====================================================
+// REDUCER
+// =====================================================
+
 export default notificationsSlice.reducer;
