@@ -40,9 +40,7 @@ export const useSSENotification = () => {
       const eventSource =
         new EventSource(
           SSE_URL,
-          {
-            withCredentials:true,
-          }
+          
         );
 
 
