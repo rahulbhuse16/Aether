@@ -4,9 +4,19 @@ import { addNotification } from "../store/slices/notificationSlice";
 import { API_BASE } from "../constants/constants";
 import { toast } from "../utils/toast";
 
-const userId = localStorage.getItem("userId")
+
+
+
+export const useSSENotification = () => {
+
+  const userId = localStorage.getItem("userId")
 
 const token=localStorage.getItem("token")
+
+ if (!userId || !token) {
+      console.log("SSE skipped: userId or token missing");
+      return;
+    }
 
 
 
@@ -14,9 +24,6 @@ const token=localStorage.getItem("token")
 
 const SSE_URL =
   `${API_BASE}/notifications/stream/${userId}?token=${token}`;
-
-
-export const useSSENotification = () => {
 
   const dispatch = useDispatch();
 
