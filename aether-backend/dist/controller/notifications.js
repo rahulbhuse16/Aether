@@ -6,14 +6,38 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.markNotificationAsRead = exports.getUserNotifications = exports.notificationsSSE = void 0;
 const sse_1 = require("../services/sse");
 const notification_1 = __importDefault(require("../models/notification"));
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const notificationsSSE = (req, res) => {
     const userId = req.params.userId;
+    const token = req.query.token;
+    if (!token) {
+        return res.status(401).json({
+            message: "Token is required",
+        });
+    }
+    const decoded = jsonwebtoken_1.default.decode(token);
+    if (!decoded?.exp) {
+        return res.status(401).json({
+            message: "Invalid token",
+        });
+    }
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders();
     (0, sse_1.addSseClient)(userId, res);
+    const expiresIn = decoded.exp * 1000 - Date.now();
+    const expiryTimer = setTimeout(() => {
+        res.write(`event: token_expired\n` +
+            `data: ${JSON.stringify({
+                message: "JWT token expired",
+            })}\n\n`);
+        res.end();
+    }, Math.max(expiresIn, 0));
+    req.on("close", () => {
+        clearTimeout(expiryTimer);
+    });
 };
 exports.notificationsSSE = notificationsSSE;
 /**

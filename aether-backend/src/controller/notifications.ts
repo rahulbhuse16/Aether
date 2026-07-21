@@ -1,13 +1,29 @@
 import { Request, Response } from "express";
 import { addSseClient } from "../services/sse";
 import Notification from "../models/notification";
-
+import  jwt  from "jsonwebtoken";
 
 export const notificationsSSE = (
   req: Request,
   res: Response
 ) => {
   const userId = req.params.userId;
+
+   const token = req.query.token as string;
+
+  if (!token) {
+    return res.status(401).json({
+      message: "Token is required",
+    });
+  }
+
+  const decoded = jwt.decode(token) as jwt.JwtPayload | null;
+
+  if (!decoded?.exp) {
+    return res.status(401).json({
+      message: "Invalid token",
+    });
+  }
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -17,6 +33,23 @@ export const notificationsSSE = (
   res.flushHeaders();
 
   addSseClient(userId, res);
+
+  const expiresIn = decoded.exp * 1000 - Date.now();
+
+  const expiryTimer = setTimeout(() => {
+    res.write(
+      `event: token_expired\n` +
+      `data: ${JSON.stringify({
+        message: "JWT token expired",
+      })}\n\n`
+    );
+
+    res.end();
+  }, Math.max(expiresIn, 0));
+   req.on("close", () => {
+    clearTimeout(expiryTimer);
+
+  });
 };
 
 

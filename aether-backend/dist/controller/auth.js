@@ -17,7 +17,7 @@ const OAUTH_STATE_COOKIE = "oauth_state";
 const SALT_ROUNDS = 10;
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 function issueToken(userId) {
-    return jsonwebtoken_1.default.sign({ userId }, JWT_SECRET, { expiresIn: "24h" });
+    return jsonwebtoken_1.default.sign({ userId }, JWT_SECRET, { expiresIn: "2m" });
 }
 function setStateCookie(res, state) {
     res.cookie(OAUTH_STATE_COOKIE, state, {
