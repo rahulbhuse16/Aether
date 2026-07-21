@@ -9,7 +9,7 @@ const userId=localStorage.getItem("userId")
 
 
 const SSE_URL =
-  `${API_BASE}/api/v1/notifications/stream/${userId}`;
+  `${API_BASE}/notifications/stream/${userId}`;
 
 
 export const useSSENotification = () => {
@@ -163,7 +163,7 @@ export const useSSENotification = () => {
     };
 
 
-  },[dispatch]);
+  },[]);
 
 
 
