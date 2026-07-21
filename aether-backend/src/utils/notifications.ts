@@ -387,7 +387,7 @@ export const buildGithubNotification = (
       title: "New GitHub comment",
       description: `${actor} commented on ${issue ? "issue" : "pull request"} #${
         issue?.number
-      }`,
+      }: ${comment.body}`,
       source: "github",
       href: issueUrl,
       icon: "message-circle",
