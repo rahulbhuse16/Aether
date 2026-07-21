@@ -12,7 +12,6 @@ const crypto_1 = __importDefault(require("crypto"));
 const project_1 = require("../models/project");
 const github_connect_1 = require("../services/github-connect");
 const notifications_1 = require("../utils/notifications");
-const sse_1 = require("../services/sse");
 /**
  * Redirect user to GitHub OAuth
  * GET /api/github/connect
@@ -188,25 +187,23 @@ const githubWebhookController = async (req, res) => {
         const projects = await project_1.Project.find({
             githubRepoId: payload.repository.id,
         }).populate("owner");
-        console.log("projects", projects);
         if (!projects.length)
             return res.status(200).json({ received: true });
-        if (event === "issues" && payload.issue) {
+        if (payload.issue) {
             await Promise.allSettled(projects.map(async (project) => {
                 const user = project.owner;
-                console.log("user", user);
                 if (!user || !user._id) {
                     console.error("Owner user not found:", project.owner);
                     return;
                 }
                 await (0, github_sync_1.syncDBfromWebhook)(user, project, payload.issue, payload.action);
                 const notification = (0, notifications_1.buildGithubNotification)(event, payload.action, payload);
+                console.log("notification", notification);
                 if (notification) {
-                    const savedNotification = await (0, notifications_1.saveNotification)({
+                    await (0, notifications_1.saveNotification)({
                         userId: user._id.toString(),
                         ...notification,
                     });
-                    (0, sse_1.sendSseEvent)(user._id.toString(), "notification", savedNotification);
                 }
             }));
         }

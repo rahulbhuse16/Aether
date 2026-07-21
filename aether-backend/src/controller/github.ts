@@ -8,8 +8,6 @@ import { Project } from "../models/project";
 import { formatTimeAgo } from "../utils/helper";
 import { connectGithubAccount } from "../services/github-connect";
 import { buildGithubNotification, saveNotification } from "../utils/notifications";
-import { NotificationType } from "../models/notification";
-import { sendSseEvent } from "../services/sse";
 
 
 
@@ -262,15 +260,13 @@ export const githubWebhookController = async (
     const projects = await Project.find({
       githubRepoId: payload.repository.id,
     }).populate("owner");
-    console.log("projects", projects)
     if (!projects.length) return res.status(200).json({ received: true });
 
-    if (event === "issues" && payload.issue) {
+    if (payload.issue) {
       await Promise.allSettled(
         projects.map(async (project) => {
           const user = project.owner as unknown as IUser;
 
-          console.log("user", user);
 
           if (!user || !user._id) {
             console.error(
@@ -293,17 +289,15 @@ export const githubWebhookController = async (
             payload,
           );
 
+          console.log("notification", notification)
+
           if (notification) {
-            const savedNotification = await saveNotification({
+            await saveNotification({
               userId: user._id.toString(),
               ...notification,
             });
 
-            sendSseEvent(
-              user._id.toString(),
-              "notification",
-              savedNotification
-            );
+            
           }
 
         })
