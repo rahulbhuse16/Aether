@@ -460,7 +460,7 @@ export const buildGithubNotification = (
         : NotificationPriority.MEDIUM;
 
     return {
-      type: NotificationType.GITHUB,
+      type: NotificationType.DEPLOYMENT,
       priority,
       title:
         workflow?.conclusion === "failure"
