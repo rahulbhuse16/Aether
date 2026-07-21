@@ -262,7 +262,7 @@ export const githubWebhookController = async (
     }).populate("owner");
     if (!projects.length) return res.status(200).json({ received: true });
 
-    if (payload.issue) {
+    if (payload) {
       await Promise.allSettled(
         projects.map(async (project) => {
           const user = project.owner as unknown as IUser;
@@ -275,13 +275,14 @@ export const githubWebhookController = async (
             );
             return;
           }
-
+          if(payload.issue){
           await syncDBfromWebhook(
             user,
             project,
             payload.issue,
             payload.action
           );
+        }
 
           const notification = buildGithubNotification(
             event!,
