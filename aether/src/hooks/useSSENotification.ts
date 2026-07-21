@@ -2,14 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { addNotification } from "../store/slices/notificationSlice";
 import { API_BASE } from "../constants/constants";
+import { toast } from "../utils/toast";
 
-const userId=localStorage.getItem("userId")
+const userId = localStorage.getItem("userId")
+
+const token=localStorage.getItem("token")
+
 
 
 
 
 const SSE_URL =
-  `${API_BASE}/notifications/stream/${userId}`;
+  `${API_BASE}/notifications/stream/${userId}?token=${token}`;
 
 
 export const useSSENotification = () => {
@@ -32,7 +36,7 @@ export const useSSENotification = () => {
 
 
       // Prevent duplicate connection
-      if(eventSourceRef.current){
+      if (eventSourceRef.current) {
         return;
       }
 
@@ -40,7 +44,7 @@ export const useSSENotification = () => {
       const eventSource =
         new EventSource(
           SSE_URL,
-          
+
         );
 
 
@@ -65,6 +69,18 @@ export const useSSENotification = () => {
         }
       );
 
+      eventSource.addEventListener("token_expired", () => {
+        toast.error("Your session has expired. Please log in again.")
+
+        eventSource.close();
+
+
+        localStorage.clear()
+
+
+        window.location.href = "/auth";
+      });
+
 
 
       /**
@@ -72,7 +88,7 @@ export const useSSENotification = () => {
        */
       eventSource.addEventListener(
         "notification",
-        (event)=>{
+        (event) => {
 
           try {
 
@@ -89,7 +105,7 @@ export const useSSENotification = () => {
             );
 
 
-          } catch(error){
+          } catch (error) {
 
             console.error(
               "Invalid SSE notification",
@@ -119,17 +135,17 @@ export const useSSENotification = () => {
 
         eventSource.close();
 
-        eventSourceRef.current=null;
+        eventSourceRef.current = null;
 
 
         /**
          * reconnect after 5 seconds
          */
-        setTimeout(()=>{
+        setTimeout(() => {
 
           connectSSE();
 
-        },5000);
+        }, 5000);
 
 
       };
@@ -146,14 +162,14 @@ export const useSSENotification = () => {
     /**
      * Cleanup
      */
-    return ()=>{
+    return () => {
 
 
-      if(eventSourceRef.current){
+      if (eventSourceRef.current) {
 
         eventSourceRef.current.close();
 
-        eventSourceRef.current=null;
+        eventSourceRef.current = null;
 
       }
 
@@ -161,7 +177,7 @@ export const useSSENotification = () => {
     };
 
 
-  },[]);
+  }, []);
 
 
 
