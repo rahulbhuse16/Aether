@@ -37,6 +37,7 @@ import { Notifications } from "./Notifications";
 import { fetchUserProjects } from "../services/dashboard";
 import { logOut } from "../services/auth";
 import { setConnectedRepo } from "../store/slices/deploymentSlice";
+import { useSSENotification } from "../hooks/useSSENotification";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -79,7 +80,13 @@ export function AppShell({
     const userId = localStorage.getItem('userId') || ""
 
     await dispatch(fetchUserProjects(userId))
+
+
+
   }
+
+
+  useSSENotification()
 
 
   useEffect(() => {
