@@ -24,7 +24,7 @@ const SALT_ROUNDS = 10;
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 function issueToken(userId: string) {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: "2m" });
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: "24h" });
 }
 
 function setStateCookie(res: Response, state: string) {
