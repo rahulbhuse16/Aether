@@ -7,10 +7,10 @@ interface IntegrationsState {
 
 const initialState: IntegrationsState = {
   integrations: [
-    { id: "i1", name: "GitHub", type: "github", connected: true, lastSync: "2 min ago" },
-    { id: "i2", name: "Jira", type: "jira", connected: true, lastSync: "15 min ago" },
+    { id: "i1", name: "GitHub", type: "github", connected: false, lastSync: "2 min ago" },
+    { id: "i2", name: "Jira", type: "jira", connected: false, lastSync: "15 min ago" },
     { id: "i3", name: "Slack", type: "slack", connected: false },
-    { id: "i4", name: "Google Calendar", type: "google", connected: true, lastSync: "1h ago" },
+    { id: "i4", name: "Google Calendar", type: "google", connected: false, lastSync: "1h ago" },
     { id: "i5", name: "Notion", type: "notion", connected: false },
   ],
 };

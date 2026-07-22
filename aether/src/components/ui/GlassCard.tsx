@@ -4,10 +4,12 @@ export function GlassCard({
   children,
   className,
   highlight,
+  onclick
 }: {
   children: React.ReactNode;
   className?: string;
   highlight?: boolean;
+  onclick?: () => void;
 }) {
   return (
     <div

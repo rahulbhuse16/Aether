@@ -16,6 +16,7 @@ import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { toggleIntegration } from "../store/slices/integrationsSlice";
 import { setBudgetUsed } from "../store/slices/budgetSlice";
 import type { Integration } from "../store/types";
+import { API_BASE } from "../constants/constants";
 
 const INTEGRATION_ICONS: Record<Integration["type"], React.ComponentType<{ className?: string }>> = {
   github: FaGithub,
@@ -30,6 +31,18 @@ export default function Settings() {
   const user = useAppSelector((s) => s.auth.user);
   const integrations = useAppSelector((s) => s.integrations.integrations);
   const budget = useAppSelector((s) => s.budget);
+  const userId = localStorage.getItem("userId") as string;
+
+
+
+  const handleIntegration=(i :Integration)=>{
+    if(i.type==='google'){
+            window.location.href = `${API_BASE}/calendar/connect?userId=${userId}`;
+      
+
+    }
+
+  }
 
   return (
     <AppShell title="Settings">
@@ -62,8 +75,13 @@ export default function Settings() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.04 * i }}
+                  onClick={()=>{
+                    handleIntegration(i)
+                  }}
                 >
-                  <GlassCard className="flex items-center justify-between py-4">
+                  <GlassCard onclick={()=>{
+                    handleIntegration(i)
+                  }}  className="flex items-center justify-between py-4">
                     <div className="flex items-center gap-3">
                       <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03]">
                         <Icon className="h-4 w-4 text-[#F4F3EF]" />
@@ -80,7 +98,7 @@ export default function Settings() {
                       </div>
                     </div>
                     <button
-                      onClick={() => dispatch(toggleIntegration(integration.id))}
+                      onClick={() => handleIntegration(integration)}
                       className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] transition-colors ${
                         integration.connected
                           ? "bg-[#22A67D]/15 text-[#22A67D]"

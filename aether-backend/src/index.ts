@@ -18,6 +18,7 @@ import meetingAgentRouter from "./router/meeting-agent";
 import emailRouter from "./router/email";
 import cookieParser from "cookie-parser";
 import taskRouter from "./router/task-planner";
+import calendarRouter from "./router/calendar";
 
 const app = express();
 
@@ -53,6 +54,7 @@ app.use("/api/v1/notifications", notificationsRouter);
 app.use("/api/v1/meetings", meetingAgentRouter);
 app.use("/api/v1/email", emailRouter);
 app.use("/api/v1/task-planner", taskRouter);
+app.use("/api/v1/calendar",calendarRouter)
 
 connectDB();
 

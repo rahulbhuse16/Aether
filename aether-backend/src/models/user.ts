@@ -23,6 +23,16 @@ export interface IUser extends Document {
   githubAvatar?: string;
   githubAccessToken?: string;
 
+  googleCalendar: {
+    accessToken: string;
+    refreshToken: string;
+    expiryDate?: number;
+    connected: boolean;
+    channelId?: string;
+    resourceId?: string;
+    expiration?: string;
+  }
+
   createdAt: Date;
   updatedAt: Date;
 
@@ -103,6 +113,37 @@ const UserSchema = new Schema<IUser>(
     githubAvatar: {
       type: String,
       default: "",
+    },
+
+    googleCalendar: {
+      accessToken: {
+        type: String,
+      },
+
+      refreshToken: {
+        type: String,
+      },
+
+      expiryDate: {
+        type: Number,
+      },
+
+      connected: {
+        type: Boolean,
+        default: false,
+      },
+
+      channelId: {
+        type: String,
+      },
+
+      resourceId: {
+        type: String,
+      },
+
+      expiration: {
+        type: String,
+      },
     },
 
     githubAccessToken: {
