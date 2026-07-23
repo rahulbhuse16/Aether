@@ -33,7 +33,12 @@ app.use(
   })
 );
 
-
+app.use(
+  "/api/v1/slack/events",
+  express.text({
+    type: "*/*",
+  })
+);
 
 // Normal body parsers
 app.use(express.json());
