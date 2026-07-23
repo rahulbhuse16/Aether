@@ -35,6 +35,7 @@ slackRouter.post("/webhook", slackWebhook);
 slackRouter.post(
   "/events",
   express.text({ type: "*/*" }),
+  verifySlackSignature,
   handleSlackEvent
 );
 
