@@ -2,22 +2,38 @@ import express, { Request, Response, Router } from "express";
 import crypto from "crypto";
 import { User } from "../models/user";
 import { Task } from "../models/task";
+import { Project, IProject } from "../models/project";
 import { ENV } from "../config/env";
-import { groqService } from "../services/groq";
+import { groqService, ProjectContext } from "../services/groq";
 import { slackMessagingService } from "../services/slack";
-import { githubService } from "../services/github";
+import { githubService } from "../services/github-service";
 import { WebClient } from "@slack/web-api";
 import Groq from "groq-sdk";
 
 const { SLACK_SIGNING_SECRET } = ENV;
 
-
 /**
- * Slack signs the raw request body, so this route needs the raw text, not
- * the app's usual express.json() parsing. Mounting express.text() here
- * (rather than globally) keeps every other route on normal JSON parsing.
+ * Fetches the user's connected projects from the database and builds
+ * a compact ProjectContext array that can be injected into every AI call.
+ * This grounds Aether's responses in the user's actual codebase.
  */
+async function getProjectContextForUser(userId: string): Promise<ProjectContext[]> {
+    try {
+        const projects = await Project.find({ owner: userId })
+            .select("repo name description stack")
+            .limit(5)
+            .lean<Pick<IProject, "repo" | "name" | "description" | "stack">[]>();
 
+        return projects.map((p) => ({
+            repoName: p.repo || p.name || "unknown",
+            description: p.description,
+            stack: p.stack || [],
+        }));
+    } catch (error) {
+        console.error("Failed to fetch project context:", error);
+        return [];
+    }
+}
 
 /**
  * Verifies the request actually came from Slack using the app's signing
@@ -80,10 +96,6 @@ export function verifySlackSignature(
  */
 export async function handleSlackEvent(req: Request, res: Response): Promise<void> {
     let payload: any;
-   
-    console.log("🔥 SLACK EVENT RECEIVED");
-  console.log("BODY:", req.body);
-  console.log("TYPE:", typeof req.body);
 
     try {
         payload = JSON.parse(req.body as unknown as string);
@@ -96,7 +108,6 @@ export async function handleSlackEvent(req: Request, res: Response): Promise<voi
      * One-time handshake Slack sends when the Events API endpoint is first
      * configured.
      */
-    
     if (payload.type === "url_verification") {
         res.status(200).json({ challenge: payload.challenge });
         return;
@@ -136,8 +147,9 @@ export async function handleSlackEvent(req: Request, res: Response): Promise<voi
 
 /**
  * Routes an @app_mention through classification into the right handler,
- * then posts Aether's reply back into the same Slack thread using that
- * workspace's own connected access token.
+ * auto-resolving which repo the user meant (if any), then posts Aether's
+ * reply back into the same Slack thread using that workspace's own
+ * connected access token.
  */
 async function processMention(
     event: {
@@ -173,6 +185,7 @@ async function processMention(
     }
 
     const accessToken = user.slack.accessToken;
+    const userIdStr = user._id.toString();
 
     try {
         const messageText = event.text.replace(/<@[^>]+>/g, "").trim();
@@ -181,13 +194,16 @@ async function processMention(
             await slackMessagingService.postText(
                 accessToken,
                 event.channel,
-                "What would you like help with? Try: \"analyze issue #142\", \"create a task: ...\", or paste an error.",
+                "What would you like help with? Try: \"analyze issue #142 in <repo>\", \"create a task: ...\", or paste an error.",
                 threadTs
             );
             return;
         }
 
-        const classification = await groqService.classifyMention(messageText);
+        // Fetch user's project context to ground all AI responses
+        const projects = await getProjectContextForUser(userIdStr);
+
+        const classification = await groqService.classifyMention(messageText, projects);
 
         switch (classification.intent) {
             case "analyze_issue": {
@@ -201,22 +217,57 @@ async function processMention(
                     break;
                 }
 
+                // Auto-detect the repo from what the user typed (or fall
+                // back to their only connected repo, if they have just one).
+                const repoFullName = await githubService.resolveRepo(
+                    userIdStr,
+                    classification.repoHint
+                );
+
+                if (!repoFullName) {
+                    const repoNames = await githubService.listRepoNames(userIdStr);
+                    const suggestion =
+                        repoNames.length > 0
+                            ? `I'm connected to: ${repoNames.join(", ")}. Try "analyze issue #${classification.issueNumber} in <repo-name>".`
+                            : "You don't have any GitHub repos connected yet — connect one in Settings first.";
+                    await slackMessagingService.postText(
+                        accessToken,
+                        event.channel,
+                        `I need to know which repo — ${suggestion}`,
+                        threadTs
+                    );
+                    break;
+                }
+
                 const issueContext = await githubService.getIssueContext(
-                    user._id.toString(),
-                    classification.issueNumber
+                    userIdStr,
+                    classification.issueNumber,
+                    repoFullName
                 );
 
                 if (!issueContext) {
                     await slackMessagingService.postText(
                         accessToken,
                         event.channel,
-                        `I couldn't find issue #${classification.issueNumber} on your connected repository.`,
+                        `I couldn't find issue #${classification.issueNumber} in ${repoFullName}.`,
                         threadTs
                     );
                     break;
                 }
 
-                const analysis = await groqService.analyzeGithubIssue(issueContext);
+                // Pull the actual source files most relevant to this issue
+                // so the fix is grounded in real code, not a guess.
+                const repoCode = await githubService.getRepoCodeContext(
+                    userIdStr,
+                    `issue #${classification.issueNumber}: ${issueContext.slice(0, 300)}`,
+                    repoFullName
+                );
+
+                const analysis = await groqService.analyzeGithubIssue(
+                    issueContext,
+                    projects,
+                    repoCode
+                );
 
                 await slackMessagingService.postIssueAnalysis(
                     accessToken,
@@ -241,12 +292,34 @@ async function processMention(
                     break;
                 }
 
+                /**
+                 * Task.project is required, but Slack has no concept of
+                 * "which project." Stopgap: use the user's oldest project
+                 * as a default "Inbox" until there's a real way to pick
+                 * one (e.g. letting the Slack command name a project).
+                 */
+                const defaultProject = await Project.findOne({ owner: user._id }).sort({
+                    createdAt: 1,
+                });
+
+                if (!defaultProject) {
+                    await slackMessagingService.postText(
+                        accessToken,
+                        event.channel,
+                        "You don't have any projects in Aether yet — create one first, then I can add tasks to it from Slack.",
+                        threadTs
+                    );
+                    break;
+                }
+
                 const task = await Task.create({
+                    id: `slack-${crypto.randomUUID()}`,
                     title,
-                    priority: classification.taskPriority || "medium",
                     status: "open",
-                    source: "slack",
-                    createdBy: user._id,
+                    source: "ai",
+                    priority: classification.taskPriority || "medium",
+                    user: user._id,
+                    project: defaultProject._id,
                 });
 
                 await slackMessagingService.postTaskCreated(
@@ -263,7 +336,23 @@ async function processMention(
             }
 
             case "bug_report": {
-                const analysis = await groqService.analyzeBugReport(messageText);
+                // Only resolve/fetch a repo if the user named one, or has
+                // exactly one connected — bug analysis still works fine
+                // without code context, just less precisely.
+                const repoFullName = await githubService.resolveRepo(
+                    userIdStr,
+                    classification.repoHint
+                );
+
+                const repoCode = repoFullName
+                    ? await githubService.getRepoCodeContext(userIdStr, messageText, repoFullName)
+                    : null;
+
+                const analysis = await groqService.analyzeBugReport(
+                    messageText,
+                    projects,
+                    repoCode
+                );
 
                 await slackMessagingService.postBugAnalysis(
                     accessToken,
@@ -276,7 +365,23 @@ async function processMention(
 
             case "general_question":
             default: {
-                const answer = await groqService.answerGeneralQuestion(messageText);
+                // Only bother resolving a repo / fetching code for
+                // general questions when the user explicitly named one —
+                // keeps plain questions fast and avoids unnecessary
+                // GitHub API calls.
+                const repoFullName = classification.repoHint
+                    ? await githubService.resolveRepo(userIdStr, classification.repoHint)
+                    : null;
+
+                const repoCode = repoFullName
+                    ? await githubService.getRepoCodeContext(userIdStr, messageText, repoFullName)
+                    : null;
+
+                const answer = await groqService.answerGeneralQuestion(
+                    messageText,
+                    projects,
+                    repoCode
+                );
 
                 await slackMessagingService.postText(
                     accessToken,
@@ -287,8 +392,6 @@ async function processMention(
                 break;
             }
         }
-
-       
     } catch (error) {
         console.error("Aether Slack mention error:", error);
 
@@ -301,9 +404,6 @@ async function processMention(
     }
 }
 
-
-
-
 /**
  * -----------------------------------------------------------------------
  * No database models here by design. Slack's own channel history is the
@@ -314,8 +414,8 @@ async function processMention(
  *
  * Trade-off worth knowing: this re-scans Slack + re-calls Groq on every
  * request, so it's slower and costs more tokens than a DB-backed version
- * would. Fine for a activity feed people check occasionally; if this page
- * gets hit often, consider a short in-memory/Redis cache per userId.
+ * would. Fine for an activity feed people check occasionally; if this
+ * page gets hit often, consider a short in-memory/Redis cache per userId.
  *
  * Slack scopes required on the bot token: channels:history,
  * groups:history, channels:read, groups:read (add im:history/mpim:history
@@ -333,6 +433,7 @@ async function extractJson<T>(system: string, transcript: string): Promise<T> {
     const response = await groq.chat.completions.create({
         model: MODEL,
         temperature: 0.1,
+        max_tokens: 4096,
         response_format: { type: "json_object" },
         messages: [
             { role: "system", content: system },
@@ -345,10 +446,6 @@ async function extractJson<T>(system: string, transcript: string): Promise<T> {
     return JSON.parse(content) as T;
 }
 
-/**
- * Returns every channel the bot is actually a member of — no point
- * scanning channels it can't read.
- */
 async function listBotChannels(
     client: WebClient
 ): Promise<{ id: string; name: string }[]> {
@@ -363,10 +460,6 @@ async function listBotChannels(
         .map((c) => ({ id: c.id as string, name: c.name as string }));
 }
 
-/**
- * Flattens a channel's recent history into a compact transcript string:
- * "[2026-07-22T09:12:00.000Z] userOrBot: message text"
- */
 async function fetchChannelTranscript(
     client: WebClient,
     channelId: string,
@@ -413,11 +506,6 @@ function getSlackClientForUser(user: any): WebClient | null {
     return new WebClient(user.slack.accessToken);
 }
 
-/**
- * -----------------------------------------------------------------------
- * @Aether mentions
- * -----------------------------------------------------------------------
- */
 export const getMentions = async (req: Request, res: Response): Promise<void> => {
     try {
         const { userId } = req.query;
@@ -436,14 +524,25 @@ export const getMentions = async (req: Request, res: Response): Promise<void> =>
         const transcript = await getFullTranscript(client, HISTORY_LOOKBACK_DAYS);
 
         const system = `You are extracting structured data from a Slack transcript for Aether, an AI engineering teammate bot.
-Find every place a human mentioned Aether and Aether replied. Pair each human message with Aether's next reply in the same channel.
-Respond ONLY with JSON, no prose, matching exactly:
-{ "mentions": [ { "channel": string, "userName": string, "question": string, "response": string, "confidence": number | null, "relatedGithubIssue": string | null, "timestamp": string } ] }
-- channel is the channel name without "#".
-- confidence: if Aether's reply states a confidence percentage, use it; otherwise null.
-- relatedGithubIssue: an issue reference like "#142" if the exchange mentions one, otherwise null.
+
+## Task
+Find every place a human mentioned Aether (identified by a message directed at Aether or containing @Aether) and Aether replied (identified by messages from "Aether" or a bot). Pair each human message with Aether's NEXT reply in the same channel.
+
+## Rules
+- Only include actual Aether mention/reply PAIRS. If a human message has no Aether reply, skip it.
+- channel: the channel name without "#".
+- userName: the human's Slack user ID or display name from the transcript.
+- question: the full human message text (not truncated).
+- response: Aether's full reply text.
+- confidence: if Aether's reply explicitly states a confidence percentage (e.g. "Confidence: 85%"), extract the number. Otherwise null.
+- relatedGithubIssue: an issue reference like "#142" if EITHER the question or response mentions one was referenced. Otherwise null.
 - timestamp: the ISO timestamp of the human's message.
-- Sort by timestamp descending. Return at most 50 entries. If there are none, return { "mentions": [] }.`;
+- Sort by timestamp descending. Return at most 50 entries.
+- If there are no mention/reply pairs, return { "mentions": [] }.
+- Do NOT hallucinate or fabricate data. Only extract what actually appears in the transcript.
+
+Respond ONLY with JSON matching:
+{ "mentions": [ { "channel": string, "userName": string, "question": string, "response": string, "confidence": number | null, "relatedGithubIssue": string | null, "timestamp": string } ] }`;
 
         const { mentions } = await extractJson<{ mentions: any[] }>(system, transcript);
 
@@ -456,15 +555,7 @@ Respond ONLY with JSON, no prose, matching exactly:
     }
 };
 
-/**
- * -----------------------------------------------------------------------
- * Tasks created via Slack — Aether posts a "Task created:" confirmation
- * block when it handles a create_task intent; this reconstructs the task
- * list purely by reading those confirmations back out of the transcript.
- * -----------------------------------------------------------------------
- */
 export const getTasks = async (req: Request, res: Response): Promise<void> => {
-    console.log("calling")
     try {
         const { userId } = req.query;
         if (!userId) {
@@ -482,17 +573,26 @@ export const getTasks = async (req: Request, res: Response): Promise<void> => {
         const transcript = await getFullTranscript(client, HISTORY_LOOKBACK_DAYS);
 
         const system = `You are extracting structured data from a Slack transcript for Aether, an AI engineering teammate bot.
-Aether posts a confirmation message whenever it creates a task from a Slack mention — it looks like "Task created: <title>" followed by "Priority: X · Source: Slack · Created by: Y".
-Find every such confirmation and extract it.
-Respond ONLY with JSON, no prose, matching exactly:
-{ "tasks": [ { "title": string, "priority": "low" | "medium" | "high", "createdBy": string, "createdAt": string } ] }
-- createdAt is the ISO timestamp of Aether's confirmation message.
-- Sort by createdAt descending. Return at most 50 entries. If there are none, return { "tasks": [] }.`;
+
+## Task
+Find every Aether task-creation confirmation message. These messages follow this pattern:
+- A line containing "Task created:" followed by the task title.
+- A context line containing "Priority: HIGH/MEDIUM/LOW · Source: Slack · Created by: <name>".
+
+## Rules
+- Only extract tasks that Aether actually confirmed creating. Do NOT extract task requests that weren't confirmed.
+- title: the task title after "Task created:".
+- priority: must be one of "low", "medium", or "high" (lowercase). Extract from the Priority field.
+- createdBy: the name from the "Created by:" field.
+- createdAt: the ISO timestamp of Aether's confirmation message.
+- Sort by createdAt descending. Return at most 50 entries.
+- If there are no task confirmations, return { "tasks": [] }.
+- Do NOT hallucinate tasks that don't appear in the transcript.
+
+Respond ONLY with JSON matching:
+{ "tasks": [ { "title": string, "priority": "low" | "medium" | "high", "createdBy": string, "createdAt": string } ] }`;
 
         const { tasks } = await extractJson<{ tasks: any[] }>(system, transcript);
-
-        console.log("tasks:", tasks);
-
 
         res.status(200).json(
             tasks.map((t, i) => ({
@@ -508,12 +608,6 @@ Respond ONLY with JSON, no prose, matching exactly:
     }
 };
 
-/**
- * -----------------------------------------------------------------------
- * Bug analyses — Aether's "🔍 Bug Analysis" replies, reconstructed the
- * same way.
- * -----------------------------------------------------------------------
- */
 export const getBugAnalyses = async (req: Request, res: Response): Promise<void> => {
     try {
         const { userId } = req.query;
@@ -532,12 +626,25 @@ export const getBugAnalyses = async (req: Request, res: Response): Promise<void>
         const transcript = await getFullTranscript(client, HISTORY_LOOKBACK_DAYS);
 
         const system = `You are extracting structured data from a Slack transcript for Aether, an AI engineering teammate bot.
-Find every human message where someone pasted an error/stack trace to Aether, and Aether's "🔍 Bug Analysis" reply with a Root Cause, a recommended fix, and a confidence percentage.
-Respond ONLY with JSON, no prose, matching exactly:
-{ "bugAnalyses": [ { "channel": string, "userName": string, "errorSnippet": string, "rootCause": string, "recommendedFix": string, "confidence": number, "timestamp": string } ] }
-- errorSnippet is the human's original pasted error, trimmed to one line if long.
-- timestamp is the ISO timestamp of Aether's reply.
-- Sort by timestamp descending. Return at most 50 entries. If there are none, return { "bugAnalyses": [] }.`;
+
+## Task
+Find every PAIR of: (1) a human message containing an error/stack trace/log output, and (2) Aether's "🔍 Bug Analysis" reply that includes Root Cause, Recommended Fix, and Confidence.
+
+## Rules
+- Only extract bug analyses where Aether actually replied with a structured bug analysis. Skip standalone error messages without Aether replies.
+- channel: the channel name without "#".
+- userName: the human who posted the error.
+- errorSnippet: the human's original pasted error, trimmed to the FIRST meaningful line (error type + message). Max 200 characters.
+- rootCause: Aether's identified root cause from the "Root Cause:" section.
+- recommendedFix: Aether's fix from the "Recommended fix:" section.
+- confidence: the numerical confidence value from Aether's reply (0-100).
+- timestamp: the ISO timestamp of Aether's reply.
+- Sort by timestamp descending. Return at most 50 entries.
+- If there are no bug analysis pairs, return { "bugAnalyses": [] }.
+- Do NOT fabricate analyses that don't appear in the transcript.
+
+Respond ONLY with JSON matching:
+{ "bugAnalyses": [ { "channel": string, "userName": string, "errorSnippet": string, "rootCause": string, "recommendedFix": string, "confidence": number, "timestamp": string } ] }`;
 
         const { bugAnalyses } = await extractJson<{ bugAnalyses: any[] }>(
             system,
@@ -553,12 +660,6 @@ Respond ONLY with JSON, no prose, matching exactly:
     }
 };
 
-/**
- * -----------------------------------------------------------------------
- * GitHub → Slack notifications — reconstructed from Aether's
- * "<emoji> <PRIORITY> GitHub Issue" blocks.
- * -----------------------------------------------------------------------
- */
 export const getGithubNotifications = async (
     req: Request,
     res: Response
@@ -580,11 +681,26 @@ export const getGithubNotifications = async (
         const transcript = await getFullTranscript(client, HISTORY_LOOKBACK_DAYS);
 
         const system = `You are extracting structured data from a Slack transcript for Aether, an AI engineering teammate bot.
-Find every Aether message formatted like "<emoji> <PRIORITY> GitHub Issue" followed by Repository, Issue, Assigned to, and an "Aether AI Analysis" section.
-Respond ONLY with JSON, no prose, matching exactly:
-{ "notifications": [ { "repository": string, "issueTitle": string, "priority": "low" | "medium" | "high", "assignedTo": string, "aiAnalysis": string, "timestamp": string } ] }
-- timestamp is the ISO timestamp of the message.
-- Sort by timestamp descending. Return at most 50 entries. If there are none, return { "notifications": [] }.`;
+
+## Task
+Find every Aether message that notifies about a GitHub issue. These messages follow this pattern:
+- A priority emoji (🔴 = high, 🟡 = medium, 🟢 = low) followed by "HIGH/MEDIUM/LOW GitHub Issue".
+- Fields: Repository, Issue (title), Assigned to.
+- An "Aether AI Analysis" section with the AI's assessment.
+
+## Rules
+- repository: the "owner/repo" from the Repository field.
+- issueTitle: the issue title from the Issue field.
+- priority: one of "low", "medium", or "high" (lowercase). Infer from the emoji or text.
+- assignedTo: the name/username from the Assigned to field.
+- aiAnalysis: the full text from the "Aether AI Analysis" section.
+- timestamp: the ISO timestamp of the notification message.
+- Sort by timestamp descending. Return at most 50 entries.
+- If there are no GitHub notifications, return { "notifications": [] }.
+- Do NOT fabricate notifications.
+
+Respond ONLY with JSON matching:
+{ "notifications": [ { "repository": string, "issueTitle": string, "priority": "low" | "medium" | "high", "assignedTo": string, "aiAnalysis": string, "timestamp": string } ] }`;
 
         const { notifications } = await extractJson<{ notifications: any[] }>(
             system,
@@ -605,14 +721,6 @@ Respond ONLY with JSON, no prose, matching exactly:
     }
 };
 
-/**
- * -----------------------------------------------------------------------
- * Daily summary — counts are done in code (string matching against
- * today's transcript, not left to the model), so the stats can't be
- * hallucinated; Groq is only used for the "insights" and
- * "recommendedAction" text, same as before.
- * -----------------------------------------------------------------------
- */
 async function buildDailySummary(client: WebClient) {
     const startOfDayTs = (
         new Date(new Date().setHours(0, 0, 0, 0)).getTime() / 1000

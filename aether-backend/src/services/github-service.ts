@@ -7,25 +7,57 @@ const MAX_BODY_CHARS = 2000;
 const MAX_COMMENTS = 5;
 const MAX_COMMENT_CHARS = 500;
 
-export interface IssueContextResult {
-    context: string;
-    url: string;
-    title: string;
-}
-
 const truncate = (text: string, max: number): string =>
     text.length > max ? `${text.slice(0, max)}… [truncated]` : text;
 
+/* ------------------------------------------------------------------ */
+/* Repo auto-detection                                                 */
+/* ------------------------------------------------------------------ */
+
+export interface RepoMatch {
+    fullName: string;
+    private: boolean;
+}
+
 /**
- * "owner/repo#123" or "owner/repo" -> { owner, repo }. Falls back to a
- * bare repo name (no owner) only if that's truly all you have — GitHub's
- * API requires both.
+ * Resolves a repo the user typed in a Slack mention (or nothing at all)
+ * against the repos their GitHub account actually has access to.
+ *
+ * Accepts, in order of preference:
+ *   - "owner/repo" exact match
+ *   - bare repo name exact match ("aether-backend")
+ *   - fuzzy/partial match ("aether" matches "aether-backend")
+ *   - no hint at all — only auto-picks if the user has exactly one repo
+ *     connected; otherwise returns null so the caller can ask.
  */
-const parseRepoFullName = (repoFullName: string): { owner: string; repo: string } | null => {
-    const [owner, repo] = repoFullName.split("/");
-    if (!owner || !repo) return null;
-    return { owner, repo };
-};
+async function resolveRepo(
+    userId: string,
+    hint: string | null | undefined
+): Promise<string | null> {
+    const repos = await githubService.listAccessibleRepos(userId);
+    if (repos.length === 0) return null;
+
+    if (!hint || !hint.trim()) {
+        return repos.length === 1 ? repos[0].fullName : null;
+    }
+
+    const cleanHint = hint.trim().toLowerCase();
+
+    const exactFullName = repos.find((r) => r.fullName.toLowerCase() === cleanHint);
+    if (exactFullName) return exactFullName.fullName;
+
+    const exactRepoName = repos.find(
+        (r) => r.fullName.toLowerCase().split("/")[1] === cleanHint
+    );
+    if (exactRepoName) return exactRepoName.fullName;
+
+    const fuzzy = repos.find((r) => {
+        const name = r.fullName.toLowerCase().split("/")[1];
+        return name.includes(cleanHint) || cleanHint.includes(name);
+    });
+
+    return fuzzy ? fuzzy.fullName : null;
+}
 
 /* ------------------------------------------------------------------ */
 /* GitHub API helpers for repo code context                            */
@@ -95,12 +127,11 @@ function scoreFilePath(path: string, terms: string[]): number {
     const base = lower.split("/").pop() ?? lower;
     let score = 0;
 
-    // Priority files always get a boost
     if (PRIORITY_FILES.has(base)) score += 2;
 
     for (const term of terms) {
-        if (base.includes(term)) score += 3;       // filename match — strongest signal
-        else if (lower.includes(term)) score += 1;  // directory/path match — weaker
+        if (base.includes(term)) score += 3;
+        else if (lower.includes(term)) score += 1;
     }
     return score;
 }
@@ -124,7 +155,6 @@ const SLACK_MAX_CONTEXT_FILES = 10;
 const SLACK_MAX_CHARS_PER_FILE = 4000;
 const SLACK_MAX_TOTAL_CHARS = 28000; // ~7k tokens — fits within Groq's 128k context with room for prompts
 
-/** Fetch the full recursive file tree for a repo. */
 async function fetchRepoTree(token: string, repoFullName: string, branch: string): Promise<string[]> {
     const tree = await githubApiFetch(
         token,
@@ -136,7 +166,6 @@ async function fetchRepoTree(token: string, repoFullName: string, branch: string
         .filter(isSearchableFile);
 }
 
-/** Fetch a single file's content (base64 decoded, truncated). */
 async function fetchFileContent(
     token: string,
     repoFullName: string,
@@ -158,49 +187,35 @@ async function fetchFileContent(
 }
 
 /**
- * -----------------------------------------------------------------------
- * getRepoCodeContext — the main function for Slack AI integration
- * -----------------------------------------------------------------------
- *
- * Given a user's GitHub token, their connected repo, and the Slack message,
- * fetches the repo's file tree, keyword-scores every file against the
- * user's message, and retrieves the content of the top-matching files.
- *
- * This gives Aether actual codebase awareness — it can reference real
- * file paths, function names, and code patterns instead of guessing.
- *
- * Token budget: ~28k chars (~7k tokens) total code context. This fits
- * comfortably within Groq's 128k context window alongside the system
- * prompt, project context, and the AI's response.
+ * Given a user's GitHub token, their resolved repo, and a query (issue
+ * text, error message, or question), fetches the repo's file tree,
+ * keyword-scores every file against the query, and retrieves the content
+ * of the top-matching files. This is what gives Aether real codebase
+ * awareness instead of generic advice.
  */
-async function getRepoCodeContext(
+async function getRepoCodeContextInternal(
     githubToken: string,
     repoFullName: string,
     query: string
 ): Promise<RepoCodeContext | null> {
     try {
-        // Get default branch
         const repoMeta = await githubApiFetch(githubToken, `/repos/${repoFullName}`);
         const branch = repoMeta.default_branch as string;
 
-        // Fetch tree + README in parallel
         const [paths, readmeRes] = await Promise.all([
             fetchRepoTree(githubToken, repoFullName, branch),
             githubApiFetch(githubToken, `/repos/${repoFullName}/readme`).catch(() => null),
         ]);
 
-        // Keyword-score every file against the user's message
         const terms = tokenizeQuery(query);
         const scored = paths
             .map((path) => ({ path, score: scoreFilePath(path, terms) }))
             .sort((a, b) => b.score - a.score);
 
-        // Take top N files — include zero-score priority files too
         const toFetch = scored
             .filter((e) => e.score > 0)
             .slice(0, SLACK_MAX_CONTEXT_FILES);
 
-        // If we have very few keyword matches, also add key structural files
         if (toFetch.length < 4) {
             const alreadyIncluded = new Set(toFetch.map((e) => e.path));
             for (const p of paths) {
@@ -213,7 +228,6 @@ async function getRepoCodeContext(
             }
         }
 
-        // Fetch file contents in parallel, respecting total char budget
         const fileResults = await Promise.all(
             toFetch.map(async ({ path }) => {
                 const content = await fetchFileContent(
@@ -225,7 +239,6 @@ async function getRepoCodeContext(
 
         let files = fileResults.filter((f): f is RepoCodeFile => f !== null);
 
-        // Enforce total character budget
         let totalChars = 0;
         files = files.filter((f) => {
             if (totalChars + f.content.length > SLACK_MAX_TOTAL_CHARS) return false;
@@ -233,7 +246,6 @@ async function getRepoCodeContext(
             return true;
         });
 
-        // Parse README
         let readmeExcerpt: string | null = null;
         if (readmeRes?.content) {
             readmeExcerpt = Buffer.from(readmeRes.content, "base64")
@@ -241,13 +253,7 @@ async function getRepoCodeContext(
                 .slice(0, 1500);
         }
 
-        return {
-            repoFullName,
-            branch,
-            fileTree: paths,
-            files,
-            readmeExcerpt,
-        };
+        return { repoFullName, branch, fileTree: paths, files, readmeExcerpt };
     } catch (error) {
         console.error("getRepoCodeContext error:", error);
         return null;
@@ -256,15 +262,25 @@ async function getRepoCodeContext(
 
 export const githubService = {
     /**
+     * Resolves a Slack-mentioned repo hint (or nothing) against the
+     * user's actual connected repos. See resolveRepo() above for the
+     * matching rules. Returns null when nothing could be confidently
+     * resolved — callers should ask the user to specify a repo in that
+     * case rather than guessing.
+     */
+    resolveRepo,
+
+    /**
      * Builds a compact plaintext summary of a GitHub issue — title, body,
      * labels, and the most recent comments — suitable for
-     * groqService.analyzeGithubIssue. Returns null if the user isn't
-     * connected, the repo can't be resolved, or the issue doesn't exist.
+     * groqService.analyzeGithubIssue. `repoFullName` should already be
+     * resolved via resolveRepo(); if omitted, this tries to resolve it
+     * itself (only succeeds when the user has exactly one repo connected).
      */
     getIssueContext: async (
         userId: string,
         issueNumber: string,
-        repoFullName?: string
+        repoFullName?: string | null
     ): Promise<string | null> => {
         const user = await User.findById(userId);
 
@@ -272,37 +288,22 @@ export const githubService = {
             return null;
         }
 
-        /**
-         * TODO: IUser has no stored default repo. Until one is added
-         * (e.g. `githubDefaultRepo: string` set when the user connects a
-         * repo in Settings), a repo must be passed explicitly — e.g. by
-         * having groqService.classifyMention also extract "owner/repo"
-         * from the Slack message, or by prompting the user to specify one
-         * when it's missing.
-         */
-        const resolvedRepo = repoFullName ?? (user as any).githubDefaultRepo;
-
-        if (!resolvedRepo) {
-            return null;
-        }
-
-        const parsed = parseRepoFullName(resolvedRepo);
-        if (!parsed) {
-            return null;
-        }
+        const resolved = repoFullName ?? (await resolveRepo(userId, null));
+        if (!resolved) return null;
 
         const octokit = new Octokit({ auth: user.githubAccessToken });
+        const [owner, repo] = resolved.split("/");
 
         try {
             const { data: issue } = await octokit.issues.get({
-                owner: parsed.owner,
-                repo: parsed.repo,
+                owner,
+                repo,
                 issue_number: Number(issueNumber),
             });
 
             const { data: comments } = await octokit.issues.listComments({
-                owner: parsed.owner,
-                repo: parsed.repo,
+                owner,
+                repo,
                 issue_number: Number(issueNumber),
                 per_page: MAX_COMMENTS,
                 sort: "created",
@@ -324,6 +325,7 @@ export const githubService = {
                 .join("\n");
 
             const context = [
+                `Repository: ${resolved}`,
                 `Title: ${issue.title}`,
                 `State: ${issue.state}`,
                 labels ? `Labels: ${labels}` : null,
@@ -343,22 +345,15 @@ export const githubService = {
         }
     },
 
-    /**
-     * Returns the canonical GitHub URL for an issue — used when posting
-     * the "Open GitHub" button alongside Aether's analysis in Slack.
-     */
     getIssueUrl: (repoFullName: string, issueNumber: string): string => {
         return `https://github.com/${repoFullName}/issues/${issueNumber}`;
     },
 
     /**
      * Lists repos the user's connected GitHub account has access to —
-     * useful for a Settings picker to let them choose a default repo per
-     * the TODO above, since none is currently stored on IUser.
+     * this is also what backs resolveRepo()'s matching.
      */
-    listAccessibleRepos: async (
-        userId: string
-    ): Promise<{ fullName: string; private: boolean }[]> => {
+    listAccessibleRepos: async (userId: string): Promise<RepoMatch[]> => {
         const user = await User.findById(userId);
 
         if (!user?.githubConnected || !user.githubAccessToken) {
@@ -379,16 +374,24 @@ export const githubService = {
     },
 
     /**
-     * Fetches repo code context for the Slack AI — the file tree,
-     * keyword-matched file contents, and README. This is the core
-     * function that gives Aether codebase awareness.
-     *
-     * Returns null if the user isn't GitHub-connected or the fetch fails.
+     * Convenience wrapper for prompting the user to pick a repo when
+     * resolveRepo() can't confidently pick one on its own.
+     */
+    listRepoNames: async (userId: string): Promise<string[]> => {
+        const repos = await githubService.listAccessibleRepos(userId);
+        return repos.map((r) => r.fullName);
+    },
+
+    /**
+     * Fetches repo code context — file tree, keyword-matched file
+     * contents, and README — for grounding Aether's responses in the
+     * user's actual codebase. `repoFullName` should already be resolved
+     * via resolveRepo(); if omitted, this tries to resolve it itself.
      */
     getRepoCodeContext: async (
         userId: string,
         query: string,
-        repoFullName?: string
+        repoFullName?: string | null
     ): Promise<RepoCodeContext | null> => {
         const user = await User.findById(userId);
 
@@ -396,9 +399,9 @@ export const githubService = {
             return null;
         }
 
-        const resolvedRepo = repoFullName ?? (user as any).githubDefaultRepo;
-        if (!resolvedRepo) return null;
+        const resolved = repoFullName ?? (await resolveRepo(userId, null));
+        if (!resolved) return null;
 
-        return getRepoCodeContext(user.githubAccessToken, resolvedRepo, query);
+        return getRepoCodeContextInternal(user.githubAccessToken, resolved, query);
     },
 };
