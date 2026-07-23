@@ -169,7 +169,7 @@ export const googleCalendarCallback = async (
         /**
          * Redirect to frontend
          */
-        res.redirect(`${FRONTEND_URL}/settings?googleCalendar=connected`);
+        res.redirect(`${FRONTEND_URL}/calendar?googleCalendar=connected`);
     } catch (error) {
         console.error("Google Calendar callback error:", error);
 
