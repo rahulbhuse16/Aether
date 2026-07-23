@@ -41,6 +41,10 @@ export default function Settings() {
       
 
     }
+    else if(i.type==='slack'){
+      window.location.href = `${API_BASE}/slack/connect?userId=${userId}`;
+
+    }
 
   }
 

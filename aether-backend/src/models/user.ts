@@ -22,6 +22,17 @@ export interface IUser extends Document {
   githubUsername?: string;
   githubAvatar?: string;
   githubAccessToken?: string;
+  slack:{
+    accessToken: string;
+    teamId: string;
+    teamName: string;
+    userId: string;
+    botUserId: string;
+    appId: string;
+    connected: boolean;
+    lastSyncAt: Date;
+
+  },
 
   googleCalendar: {
     accessToken: string;
@@ -114,6 +125,41 @@ const UserSchema = new Schema<IUser>(
       type: String,
       default: "",
     },
+
+    slack: {
+  accessToken: {
+    type: String,
+  },
+
+  teamId: {
+    type: String,
+  },
+
+  teamName: {
+    type: String,
+  },
+
+  userId: {
+    type: String,
+  },
+
+  botUserId: {
+    type: String,
+  },
+
+  appId: {
+    type: String,
+  },
+
+  connected: {
+    type: Boolean,
+    default: false,
+  },
+
+  lastSyncAt: {
+    type: Date,
+  },
+},
 
     googleCalendar: {
       accessToken: {

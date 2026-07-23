@@ -38,6 +38,7 @@ import { fetchUserProjects } from "../services/dashboard";
 import { logOut } from "../services/auth";
 import { setConnectedRepo } from "../store/slices/deploymentSlice";
 import { useSSENotification } from "../hooks/useSSENotification";
+import { FaSlack } from "react-icons/fa";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -52,6 +53,7 @@ const NAV_ITEMS = [
   { label: "Deployment", href: "/deployment", icon: Rocket },
   { label: "Voice engineer", href: "/voice", icon: AudioLines },
   { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Slack", href: "/slack", icon: FaSlack },
 ];
 
 export function AppShell({

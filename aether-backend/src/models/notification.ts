@@ -11,6 +11,7 @@ export enum NotificationType {
   BILLING = "billing",
   AGENT = "agent",
   SYSTEM = "system",
+  SLACK='slack'
 }
 
 export enum NotificationPriority {

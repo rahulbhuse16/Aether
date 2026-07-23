@@ -19,6 +19,9 @@ import TaskPlanner from "../pages/TaskPlanner";
 import Onboarding from "../pages/Onboarding";
 import ForgotPwd from "../pages/ForgotPwd";
 import OAuthCallback from "../pages/OAuthCallback";
+import Slack from "../pages/Slack";
+import SlackChat from "../pages/SlackChat";
+import AetherActivity from "../pages/SlackSync";
 
 const Router = () => {
   return (
@@ -50,6 +53,10 @@ const Router = () => {
           <Route path="/deployment" element={<DeploymentAgent />} />
           <Route path="/voice" element={<VoiceEngineer />} />
           <Route path="/planner" element={<TaskPlanner />} />
+           <Route path="/slack" element={<Slack />} />
+            <Route path="/slack-chat" element={<SlackChat />} />
+                        <Route path="/slack-ai" element={<AetherActivity />} />
+
         </Route>
       </Routes>
     </BrowserRouter>

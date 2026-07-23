@@ -15,6 +15,9 @@ import architectureReducer from "./slices/architectureSlice";
 import voiceReducer from "./slices/voiceSlice";
 import integrationsReducer from "./slices/integrationsSlice";
 import notificationsReducer from './slices/notificationSlice'
+import slackReducer from './slices/slackSlice'
+import slackChatReducer from './slices/slickChatSlice'
+import slackSyncReducer from './slices/slackSyncSlice'
 
 export const store = configureStore({
   reducer: {
@@ -33,7 +36,10 @@ export const store = configureStore({
     architecture: architectureReducer,
     voice: voiceReducer,
     integrations: integrationsReducer,
-    notifications: notificationsReducer
+    notifications: notificationsReducer,
+    slack: slackReducer,
+    slackChat : slackChatReducer,
+    aetherSlack : slackSyncReducer
   },
 });
 
