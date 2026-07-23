@@ -1,6 +1,16 @@
-import axios from "axios";
 import { API_BASE } from "../constants/constants";
 import api from "../api/api";
+
+
+export interface IPayload {
+  userId: string;
+  title: string;
+  description?: string;
+  startTime: string;
+  endTime: string;
+  timezone?: string;
+  attendees?: string[];
+}
 
 export interface CalendarEvent {
   id: string;
@@ -56,6 +66,16 @@ export const calendarService = {
     const { data } = await calendarApi.get("/calendar/events", {
       params: { userId, ...range },
     });
+    return data;
+  },
+
+
+
+
+  createMeeting: async (
+    payload :IPayload
+  ) => {
+    const { data } = await calendarApi.post("/calendar/create-meeting", payload);
     return data;
   },
 };

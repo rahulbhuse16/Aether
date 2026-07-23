@@ -6,25 +6,19 @@ import {
   Video,
   Users,
   Sparkles,
-  MapPin,
   AlignLeft,
+  Plus,
 } from "lucide-react";
 import { GlassCard } from "./GlassCard";
 import { Button } from "./Button";
 import { useState } from "react";
+import type { IPayload } from "../../services/calendar";
 
 interface CreateMeetingModalProps {
   isOpen: boolean;
   onClose: () => void;
 
-  onCreateMeeting: (meeting: {
-    title: string;
-    description?: string;
-    startTime: string;
-    endTime: string;
-    timezone: string;
-    attendees: string[];
-  }) => void;
+  onCreateMeeting: (meeting: IPayload) => void;
 }
 
 const TIMEZONES = [
@@ -52,7 +46,8 @@ export function CreateMeetingModal({
   const [timezone, setTimezone] =
     useState<string>("Asia/Kolkata");
 
-  const [attendees, setAttendees] = useState("");
+  const [attendees, setAttendees] = useState<string[]>([]);
+  const [emailInput, setEmailInput] = useState("");
 
   const resetForm = () => {
     setTitle("");
@@ -61,12 +56,25 @@ export function CreateMeetingModal({
     setStartTime("");
     setEndTime("");
     setTimezone("Asia/Kolkata");
-    setAttendees("");
+    setAttendees([]);
+    setEmailInput("");
   };
 
   const handleClose = () => {
     resetForm();
     onClose();
+  };
+
+  const handleAddAttendee = () => {
+    const email = emailInput.trim();
+    if (email && !attendees.includes(email) && email.includes('@')) {
+      setAttendees([...attendees, email]);
+      setEmailInput("");
+    }
+  };
+
+  const handleRemoveAttendee = (email: string) => {
+    setAttendees(attendees.filter((e) => e !== email));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -80,11 +88,6 @@ export function CreateMeetingModal({
     ) {
       return;
     }
-
-    const attendeesList = attendees
-      .split(",")
-      .map((email) => email.trim())
-      .filter(Boolean);
 
     const startDateTime = new Date(
       `${date}T${startTime}`
@@ -100,7 +103,8 @@ export function CreateMeetingModal({
       startTime: startDateTime,
       endTime: endDateTime,
       timezone,
-      attendees: attendeesList,
+      attendees: attendees,
+      userId : localStorage.getItem("userId") as string
     });
 
     resetForm();
@@ -145,9 +149,9 @@ export function CreateMeetingModal({
                 y: 10,
               }}
               transition={{ duration: 0.2 }}
-              className="relative w-full max-w-xl"
+              className="relative w-full max-w-xl my-4"
             >
-              <GlassCard className="overflow-hidden p-6">
+              <GlassCard className="overflow-hidden p-6 max-h-[calc(100vh-2rem)] overflow-y-auto">
                 {/* Header */}
                 <div className="mb-6 flex items-start justify-between">
                   <div className="flex items-start gap-3">
@@ -319,17 +323,52 @@ export function CreateMeetingModal({
 
                       <input
                         type="text"
-                        value={attendees}
+                        value={emailInput}
                         onChange={(e) =>
-                          setAttendees(e.target.value)
+                          setEmailInput(e.target.value)
                         }
-                        placeholder="email@example.com, teammate@example.com"
-                        className="w-full rounded-lg border border-white/[0.1] bg-white/[0.02] px-4 py-2.5 pl-10 text-[13px] text-[#F4F3EF] placeholder:text-[#55575F] focus:border-[#8B7FE8]/50 focus:outline-none focus:ring-1 focus:ring-[#8B7FE8]/50"
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddAttendee();
+                          }
+                        }}
+                        placeholder="email@example.com"
+                        className="w-full rounded-lg border border-white/[0.1] bg-white/[0.02] px-4 py-2.5 pl-10 pr-10 text-[13px] text-[#F4F3EF] placeholder:text-[#55575F] focus:border-[#8B7FE8]/50 focus:outline-none focus:ring-1 focus:ring-[#8B7FE8]/50"
                       />
+
+                      <button
+                        type="button"
+                        onClick={handleAddAttendee}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-full bg-[#8B7FE8] text-white hover:bg-[#7B6FD8] transition-colors"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
                     </div>
 
+                    {/* Attendee badges */}
+                    {attendees.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {attendees.map((email) => (
+                          <div
+                            key={email}
+                            className="flex items-center gap-1.5 rounded-full border border-[#8B7FE8]/30 bg-[#8B7FE8]/10 px-3 py-1 text-[12px] text-[#F4F3EF]"
+                          >
+                            <span className="truncate max-w-[150px]">{email}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveAttendee(email)}
+                              className="flex h-4 w-4 items-center justify-center rounded-full text-[#94969E] hover:text-[#F4F3EF] hover:bg-white/[0.1] transition-colors"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     <p className="mt-1.5 text-[11px] text-[#55575F]">
-                      Separate multiple email addresses with commas
+                      Press Enter or click + to add email addresses
                     </p>
                   </div>
 

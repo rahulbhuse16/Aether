@@ -26,7 +26,7 @@ import {
   disconnectCalendar,
 } from "../store/slices/calndarSlice";
 import { calendarService } from "../services/calendar";
-import type { CalendarEvent } from "../services/calendar";
+import type { CalendarEvent, IPayload } from "../services/calendar";
 import { CreateMeetingModal } from "../components/ui/CreateMeetingModal";
 
 type ViewMode = "agenda" | "month";
@@ -189,6 +189,10 @@ export default function Calendar() {
 
   const openModal=()=>{
     setIsOpen(true)
+  }
+
+  const handleCreateMeeting=async(payload:IPayload)=>{
+    await calendarService.createMeeting(payload)
   }
 
 
@@ -482,9 +486,7 @@ export default function Calendar() {
           </PageSection>
         )}
       </div>
-      <CreateMeetingModal onCreateMeeting={()=>{
-
-      }} isOpen={isOpen} onClose={() => setIsOpen(false)}/>
+      <CreateMeetingModal onCreateMeeting={handleCreateMeeting} isOpen={isOpen} onClose={() => setIsOpen(false)}/>
     </AppShell>
   );
 }

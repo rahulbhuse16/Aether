@@ -7,7 +7,7 @@
 //     return <AppShell title="Dashboard"><DashboardContent /></AppShell>;
 //   }
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -29,7 +29,7 @@ import {
   AudioLines,
   Plus,
 } from "lucide-react";
-import { FaCalendarAlt, FaRegCalendarAlt } from "react-icons/fa";
+import { FaCalendarAlt } from "react-icons/fa";
 
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { setCurrentProject, setCurrentRepoId } from "../store/slices/projectsSlice";
@@ -40,23 +40,118 @@ import { fetchUserProjects } from "../services/dashboard";
 import { logOut } from "../services/auth";
 import { setConnectedRepo } from "../store/slices/deploymentSlice";
 import { useSSENotification } from "../hooks/useSSENotification";
-import { FaCalendar, FaSlack } from "react-icons/fa";
+import { FaSlack } from "react-icons/fa";
+import { WalkthroughTooltip } from "./ui/WalkthroughTooltip";
+import type { WalkthroughStep } from "./ui/WalkthroughTooltip";
 
 const NAV_ITEMS = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Task planner", href: "/planner", icon: ListTodo },
-  { label: "Chat with repo", href: "/chat", icon: MessagesSquare },
-  { label: "Code reviews", href: "/reviews", icon: GitPullRequest },
-  { label: "API agent", href: "/api-agent", icon: Link2 },
-  { label: "Bug finder", href: "/bugs", icon: Bug },
-  { label: "Architecture", href: "/architecture", icon: Layers },
-  { label: "Documentation", href: "/docs-generator", icon: FileText },
-  { label: "Meetings", href: "/meetings", icon: Mic },
-  { label: "Deployment", href: "/deployment", icon: Rocket },
-  { label: "Voice engineer", href: "/voice", icon: AudioLines },
-  { label: "Settings", href: "/settings", icon: Settings },
-  { label: "Slack", href: "/slack", icon: FaSlack },
-  { label: "Calendar", href: "/calendar", icon: FaCalendarAlt },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, id: "nav-dashboard" },
+  { label: "Task planner", href: "/planner", icon: ListTodo, id: "nav-planner" },
+  { label: "Chat with repo", href: "/chat", icon: MessagesSquare, id: "nav-chat" },
+  { label: "Code reviews", href: "/reviews", icon: GitPullRequest, id: "nav-reviews" },
+  { label: "API agent", href: "/api-agent", icon: Link2, id: "nav-api" },
+  { label: "Bug finder", href: "/bugs", icon: Bug, id: "nav-bugs" },
+  { label: "Architecture", href: "/architecture", icon: Layers, id: "nav-architecture" },
+  { label: "Documentation", href: "/docs-generator", icon: FileText, id: "nav-docs" },
+  { label: "Meetings", href: "/meetings", icon: Mic, id: "nav-meetings" },
+  { label: "Deployment", href: "/deployment", icon: Rocket, id: "nav-deployment" },
+  { label: "Voice engineer", href: "/voice", icon: AudioLines, id: "nav-voice" },
+  { label: "Settings", href: "/settings", icon: Settings, id: "nav-settings" },
+  { label: "Slack", href: "/slack", icon: FaSlack, id: "nav-slack" },
+  { label: "Calendar", href: "/calendar", icon: FaCalendarAlt, id: "nav-calendar" },
+];
+
+const WALKTHROUGH_STEPS: WalkthroughStep[] = [
+  {
+    target: "project-switcher",
+    title: "Project Switcher",
+    description: "Switch between your different projects here. Click to add new projects or select an existing one.",
+    icon: <Plus className="h-5 w-5" />,
+  },
+  {
+    target: "nav-dashboard",
+    title: "Dashboard",
+    description: "Get an overview of your project's activity, AI insights, and quick stats.",
+    icon: <LayoutDashboard className="h-5 w-5" />,
+  },
+  {
+    target: "nav-planner",
+    title: "Task Planner",
+    description: "Manage your tasks in a unified board with GitHub, Jira, and AI-suggested tasks.",
+    icon: <ListTodo className="h-5 w-5" />,
+  },
+  {
+    target: "nav-chat",
+    title: "Chat with Repo",
+    description: "Ask questions about your codebase and get AI-powered answers with file references.",
+    icon: <MessagesSquare className="h-5 w-5" />,
+  },
+  {
+    target: "nav-reviews",
+    title: "Code Reviews",
+    description: "AI-powered code review for pull requests with actionable suggestions.",
+    icon: <GitPullRequest className="h-5 w-5" />,
+  },
+  {
+    target: "nav-api",
+    title: "API Agent",
+    description: "Generate React hooks, TypeScript types, and documentation from OpenAPI specs.",
+    icon: <Link2 className="h-5 w-5" />,
+  },
+  {
+    target: "nav-bugs",
+    title: "Bug Finder",
+    description: "AI-powered bug detection and root cause analysis for your codebase.",
+    icon: <Bug className="h-5 w-5" />,
+  },
+  {
+    target: "nav-architecture",
+    title: "Architecture",
+    description: "Generate system architecture diagrams from feature descriptions.",
+    icon: <Layers className="h-5 w-5" />,
+  },
+  {
+    target: "nav-docs",
+    title: "Documentation",
+    description: "Auto-generate documentation for your codebase with AI-powered content generation.",
+    icon: <FileText className="h-5 w-5" />,
+  },
+  {
+    target: "nav-meetings",
+    title: "Meetings",
+    description: "AI-powered meeting transcription and action item extraction.",
+    icon: <Mic className="h-5 w-5" />,
+  },
+  {
+    target: "nav-deployment",
+    title: "Deployment",
+    description: "Generate deployment configs and manage your application deployments.",
+    icon: <Rocket className="h-5 w-5" />,
+  },
+  {
+    target: "nav-voice",
+    title: "Voice Engineer",
+    description: "Speak your features into existence with AI-powered voice-to-code generation.",
+    icon: <AudioLines className="h-5 w-5" />,
+  },
+  {
+    target: "nav-settings",
+    title: "Settings",
+    description: "Manage your account settings, preferences, and integrations.",
+    icon: <Settings className="h-5 w-5" />,
+  },
+  {
+    target: "nav-slack",
+    title: "Slack Integration",
+    description: "Connect and manage your Slack workspace integrations.",
+    icon: <FaSlack className="h-5 w-5" />,
+  },
+  {
+    target: "nav-calendar",
+    title: "Calendar",
+    description: "View and manage your schedule with integrated calendar functionality.",
+    icon: <FaCalendarAlt className="h-5 w-5" />,
+  },
 ];
 
 export function AppShell({
@@ -70,6 +165,11 @@ export function AppShell({
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+
+  // Walkthrough state
+  const [walkthroughOpen, setWalkthroughOpen] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [targetPositions, setTargetPositions] = useState<Map<string, { top: number; left: number; width: number; height: number }>>(new Map());
 
   const user = useAppSelector((s) => s.auth.user);
   const projectsState = useAppSelector((s) => s.projects);
@@ -99,6 +199,76 @@ export function AppShell({
 
   }, [])
 
+  // Check if walkthrough should show
+  useEffect(() => {
+    const hasCompletedWalkthrough = localStorage.getItem('aether_walkthrough_completed');
+    if (!hasCompletedWalkthrough && !projectsLoading && currentProject) {
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        setWalkthroughOpen(true);
+        updateTargetPositions();
+      }, 1000);
+    }
+  }, [projectsLoading, currentProject]);
+
+  // Update target positions when step changes or sidebar collapses
+  useEffect(() => {
+    if (walkthroughOpen) {
+      updateTargetPositions();
+    }
+  }, [currentStep, walkthroughOpen, sidebarCollapsed]);
+
+  const updateTargetPositions = useCallback(() => {
+    const positions = new Map<string, { top: number; left: number; width: number; height: number }>();
+
+    // Get project switcher position
+    const projectSwitcher = document.querySelector('[data-walkthrough="project-switcher"]');
+    if (projectSwitcher) {
+      const rect = projectSwitcher.getBoundingClientRect();
+      positions.set('project-switcher', {
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+      });
+    }
+
+    // Get nav item positions
+    WALKTHROUGH_STEPS.forEach((step) => {
+      if (step.target.startsWith('nav-')) {
+        const navItem = document.querySelector(`[data-walkthrough="${step.target}"]`);
+        if (navItem) {
+          const rect = navItem.getBoundingClientRect();
+          positions.set(step.target, {
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+          });
+        }
+      }
+    });
+
+    setTargetPositions(positions);
+  }, [currentStep]);
+
+  const handleNextStep = () => {
+    if (currentStep < WALKTHROUGH_STEPS.length - 1) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      handleSkipWalkthrough();
+    }
+  };
+
+  const handleSkipWalkthrough = () => {
+    setWalkthroughOpen(false);
+    localStorage.setItem('aether_walkthrough_completed', 'true');
+  };
+
+  const handleCloseWalkthrough = () => {
+    setWalkthroughOpen(false);
+    localStorage.setItem('aether_walkthrough_completed', 'true');
+  };
 
   const handleLogout=async()=>{
     await logOut()
@@ -133,6 +303,7 @@ export function AppShell({
             )
           ) : (
             <button
+              data-walkthrough="project-switcher"
               onClick={() => setProjectMenuOpen((v) => !v)}
               className="flex w-full items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-left transition-colors hover:bg-white/[0.04]"
             >
@@ -194,6 +365,7 @@ export function AppShell({
               <Link
                 key={item.href}
                 to={item.href}
+                data-walkthrough={item.id}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] transition-colors ${active
                     ? "bg-white/[0.06] text-[#F4F3EF]"
                     : "text-[#94969E] hover:bg-white/[0.03] hover:text-[#F4F3EF]"
@@ -265,6 +437,18 @@ export function AppShell({
 
         <main className="flex-1 overflow-y-auto px-6 py-8">{children}</main>
       </div>
+
+      {/* Walkthrough Tooltip */}
+      {walkthroughOpen && (
+        <WalkthroughTooltip
+          steps={WALKTHROUGH_STEPS}
+          currentStep={currentStep}
+          onNext={handleNextStep}
+          onSkip={handleSkipWalkthrough}
+          onClose={handleCloseWalkthrough}
+          targetPositions={targetPositions}
+        />
+      )}
     </div>
   );
 }

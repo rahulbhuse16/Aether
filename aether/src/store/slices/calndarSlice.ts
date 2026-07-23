@@ -104,10 +104,10 @@ function mockEventsFromToday(): CalendarEvent[] {
 }
 
 const initialState: CalendarState = {
-  connected: true,
+  connected: false,
   email: "you@example.com",
-  lastSyncAt: new Date().toISOString(),
-  events: mockEventsFromToday(),
+  lastSyncAt: '',
+  events: [],
   status: "idle",
   error: null,
 };
