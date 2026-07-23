@@ -206,8 +206,10 @@ export default function AuthPage() {
             setLoading(true);
             if (isSignUp) {
                 await signUpWithEmail?.(name, email, password);
+                navigate('/dashboard')
             } else {
                 await loginWithEmail?.(email, password);
+                navigate('/dashboard')
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : "Something went wrong. Try again.");

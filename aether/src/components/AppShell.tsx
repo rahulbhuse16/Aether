@@ -29,6 +29,8 @@ import {
   AudioLines,
   Plus,
 } from "lucide-react";
+import { FaCalendarAlt, FaRegCalendarAlt } from "react-icons/fa";
+
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { setCurrentProject, setCurrentRepoId } from "../store/slices/projectsSlice";
 import { toggleSidebar } from "../store/slices/uiSlice";
@@ -38,7 +40,7 @@ import { fetchUserProjects } from "../services/dashboard";
 import { logOut } from "../services/auth";
 import { setConnectedRepo } from "../store/slices/deploymentSlice";
 import { useSSENotification } from "../hooks/useSSENotification";
-import { FaSlack } from "react-icons/fa";
+import { FaCalendar, FaSlack } from "react-icons/fa";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -54,6 +56,7 @@ const NAV_ITEMS = [
   { label: "Voice engineer", href: "/voice", icon: AudioLines },
   { label: "Settings", href: "/settings", icon: Settings },
   { label: "Slack", href: "/slack", icon: FaSlack },
+  { label: "Calendar", href: "/calendar", icon: FaCalendarAlt },
 ];
 
 export function AppShell({

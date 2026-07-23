@@ -22,6 +22,7 @@ import OAuthCallback from "../pages/OAuthCallback";
 import Slack from "../pages/Slack";
 import SlackChat from "../pages/SlackChat";
 import AetherActivity from "../pages/SlackSync";
+import Calendar from "../pages/Calendar";
 
 const Router = () => {
   return (
@@ -56,6 +57,7 @@ const Router = () => {
            <Route path="/slack" element={<Slack />} />
             <Route path="/slack-chat" element={<SlackChat />} />
                         <Route path="/slack-ai" element={<AetherActivity />} />
+                        <Route path="/calendar" element={<Calendar />} />
 
         </Route>
       </Routes>

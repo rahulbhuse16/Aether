@@ -18,6 +18,7 @@ import notificationsReducer from './slices/notificationSlice'
 import slackReducer from './slices/slackSlice'
 import slackChatReducer from './slices/slickChatSlice'
 import slackSyncReducer from './slices/slackSyncSlice'
+import calendarReducer from './slices/calndarSlice'
 
 export const store = configureStore({
   reducer: {
@@ -39,7 +40,8 @@ export const store = configureStore({
     notifications: notificationsReducer,
     slack: slackReducer,
     slackChat : slackChatReducer,
-    aetherSlack : slackSyncReducer
+    aetherSlack : slackSyncReducer,
+    calendar:calendarReducer
   },
 });
 

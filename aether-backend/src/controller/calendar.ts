@@ -387,3 +387,303 @@ const createGoogleCalendarWatch = async (userId: string): Promise<void> => {
         console.error("Create Google Calendar watch error:", error);
     }
 };
+
+
+/**
+ * Get Google Calendar connection status
+ */
+export const getCalendarStatus = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        const { userId } = req.query;
+
+        if (!userId) {
+            res.status(400).json({
+                message: "userId is required",
+            });
+            return;
+        }
+
+        const user = await User.findById(userId).select(
+            "email googleCalendar"
+        );
+
+        if (!user) {
+            res.status(404).json({
+                message: "User not found",
+            });
+            return;
+        }
+
+        res.status(200).json({
+            connected: Boolean(user.googleCalendar?.connected),
+            email: user.email || null,
+        });
+    } catch (error) {
+        console.error("Get calendar status error:", error);
+
+        res.status(500).json({
+            message: "Failed to get calendar status",
+        });
+    }
+};
+
+/**
+ * Get Google Calendar events
+ */
+export const getCalendarEvents = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        const {
+            userId,
+            timeMin,
+            timeMax,
+        } = req.query;
+
+        if (!userId) {
+            res.status(400).json({
+                message: "userId is required",
+            });
+            return;
+        }
+
+        const user = await User.findById(userId);
+
+        if (!user) {
+            res.status(404).json({
+                message: "User not found",
+            });
+            return;
+        }
+
+        if (!user.googleCalendar?.connected) {
+            res.status(400).json({
+                message: "Google Calendar is not connected",
+            });
+            return;
+        }
+
+        const auth = getAuthClientForUser(user);
+
+        const calendar = google.calendar({
+            version: "v3",
+            auth,
+        });
+
+        const now = Date.now();
+
+        const startTime =
+            typeof timeMin === "string"
+                ? timeMin
+                : new Date(now).toISOString();
+
+        const endTime =
+            typeof timeMax === "string"
+                ? timeMax
+                : new Date(
+                      now + 7 * 24 * 60 * 60 * 1000
+                  ).toISOString();
+
+        const response = await calendar.events.list({
+            calendarId: "primary",
+            timeMin: startTime,
+            timeMax: endTime,
+            singleEvents: true,
+            orderBy: "startTime",
+            maxResults: 250,
+        });
+
+        const events = (
+            response.data.items || []
+        ).map((event) => ({
+            id: event.id || "",
+            title: event.summary || "Untitled Event",
+
+            start:
+                event.start?.dateTime ||
+                event.start?.date ||
+                "",
+
+            end:
+                event.end?.dateTime ||
+                event.end?.date ||
+                "",
+
+            allDay: Boolean(event.start?.date),
+
+            location: event.location || null,
+
+            meetingUrl:
+                event.hangoutLink ||
+                event.conferenceData?.entryPoints?.find(
+                    (entry) =>
+                        entry.entryPointType === "video"
+                )?.uri ||
+                null,
+
+            attendees:
+                event.attendees?.map(
+                    (attendee) =>
+                        attendee.email || ""
+                ).filter(Boolean) || [],
+
+            status:
+                event.status === "cancelled"
+                    ? "cancelled"
+                    : event.status === "tentative"
+                    ? "tentative"
+                    : "confirmed",
+
+            htmlLink: event.htmlLink || "",
+        }));
+
+        await User.findByIdAndUpdate(userId, {
+            $set: {
+                "googleCalendar.lastSyncAt": new Date(),
+            },
+        });
+
+        res.status(200).json(events);
+    } catch (error) {
+        console.error("Get calendar events error:", error);
+
+        res.status(500).json({
+            message: "Failed to fetch calendar events",
+        });
+    }
+};
+
+export const createGoogleMeeting = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    try {
+        const {
+            userId,
+            title,
+            description,
+            startTime,
+            endTime,
+            timezone = "Asia/Kolkata",
+            attendees = [],
+        } = req.body;
+
+        if (
+            !userId ||
+            !title ||
+            !startTime ||
+            !endTime
+        ) {
+            res.status(400).json({
+                message:
+                    "userId, title, startTime and endTime are required",
+            });
+            return;
+        }
+
+        const user = await User.findById(userId);
+
+        if (!user?.googleCalendar?.accessToken) {
+            res.status(400).json({
+                message: "Google Calendar is not connected",
+            });
+            return;
+        }
+
+        const auth = getAuthClientForUser(user);
+
+        const calendar = google.calendar({
+            version: "v3",
+            auth,
+        });
+
+        const requestId = crypto.randomUUID();
+
+        const event = await calendar.events.insert({
+            calendarId: "primary",
+
+            conferenceDataVersion: 1,
+
+            requestBody: {
+                summary: title,
+
+                description: description || "",
+
+                start: {
+                    dateTime: new Date(startTime).toISOString(),
+                    timeZone: timezone,
+                },
+
+                end: {
+                    dateTime: new Date(endTime).toISOString(),
+                    timeZone: timezone,
+                },
+
+                attendees: attendees.map((email: string) => ({
+                    email,
+                })),
+
+                conferenceData: {
+                    createRequest: {
+                        requestId,
+
+                        conferenceSolutionKey: {
+                            type: "hangoutsMeet",
+                        },
+                    },
+                },
+            },
+        });
+
+        const createdEvent = event.data;
+
+        const meetingUrl =
+            createdEvent.hangoutLink ||
+            createdEvent.conferenceData?.entryPoints?.find(
+                (entry) =>
+                    entry.entryPointType === "video"
+            )?.uri ||
+            null;
+
+        res.status(201).json({
+            success: true,
+
+            event: {
+                id: createdEvent.id,
+
+                title: createdEvent.summary,
+
+                start:
+                    createdEvent.start?.dateTime ||
+                    createdEvent.start?.date,
+
+                end:
+                    createdEvent.end?.dateTime ||
+                    createdEvent.end?.date,
+
+                meetingUrl,
+
+                htmlLink: createdEvent.htmlLink,
+
+                attendees:
+                    createdEvent.attendees?.map(
+                        (attendee) => attendee.email
+                    ) || [],
+            },
+        });
+    } catch (error) {
+        console.error(
+            "Create Google Meeting error:",
+            error
+        );
+
+        res.status(500).json({
+            success: false,
+            message: "Failed to create Google Meeting",
+        });
+    }
+};
