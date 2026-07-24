@@ -149,6 +149,7 @@ export const googleCalendarCallback = async (
                     "googleCalendar.refreshToken": tokens.refresh_token || undefined,
                     "googleCalendar.expiryDate": tokens.expiry_date,
                     "googleCalendar.connected": true,
+                    "googleCalendar.lastSyncAt": new Date(),
                 },
             },
             {
@@ -374,6 +375,7 @@ const createGoogleCalendarWatch = async (userId: string): Promise<void> => {
                 "googleCalendar.channelId": channelId,
                 "googleCalendar.resourceId": response.data.resourceId,
                 "googleCalendar.expiration": response.data.expiration,
+            
             },
         });
 

@@ -13,10 +13,14 @@ import { GlassCard } from "../components/ui/GlassCard";
 import { PageSection } from "../components/ui/PageSection";
 import { Button } from "../components/ui/Button";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { toggleIntegration } from "../store/slices/integrationsSlice";
 import { setBudgetUsed } from "../store/slices/budgetSlice";
 import type { Integration } from "../store/types";
 import { API_BASE } from "../constants/constants";
+import { useEffect } from "react";
+import { loadUser } from "../services/auth";
+import { setIntegrationState } from "../store/slices/integrationsSlice";
+import { timeAgo } from "../utils/helper";
+import api from "../api/api";
 
 const INTEGRATION_ICONS: Record<Integration["type"], React.ComponentType<{ className?: string }>> = {
   github: FaGithub,
@@ -32,6 +36,66 @@ export default function Settings() {
   const integrations = useAppSelector((s) => s.integrations.integrations);
   const budget = useAppSelector((s) => s.budget);
   const userId = localStorage.getItem("userId") as string;
+
+
+
+  const loadIntegrations = async () => {
+
+  if (!userId) return;
+
+  try {
+    const response = await api.get(`/auth/user/${userId}`);
+
+    const data = response.data.user;
+
+    dispatch(
+      setIntegrationState({
+        github: {
+          connected: Boolean(data?.githubConnected),
+          lastSync: undefined,
+        },
+
+        jira: {
+          connected: false,
+          lastSync: undefined,
+        },
+
+        slack: {
+          connected: Boolean(data?.slack?.connected),
+          lastSync: data?.slack?.lastSyncAt
+            ? timeAgo(data.slack.lastSyncAt)
+            : undefined,
+        },
+
+        google: {
+          connected: Boolean(data?.googleCalendar?.connected),
+          lastSync: data?.googleCalendar?.lastSyncAt
+            ? timeAgo(data.googleCalendar.lastSyncAt)
+            : undefined,
+        },
+
+        notion: {
+          connected: Boolean(data?.notion?.connected),
+          lastSync: data?.notion?.lastSyncAt
+            ? timeAgo(data.notion.lastSyncAt)
+            : undefined,
+        },
+      })
+    );
+  } catch (error) {
+    console.error("loadIntegrations error:", error);
+  }
+};
+
+
+
+
+ useEffect(() => {
+  console.log("Settings effect started");
+  loadIntegrations();
+
+  
+}, []);
 
 
 
@@ -51,6 +115,8 @@ export default function Settings() {
     }
 
   }
+
+  console.log("i",integrations)
 
   return (
     <AppShell title="Settings">

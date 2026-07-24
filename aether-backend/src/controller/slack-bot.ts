@@ -392,6 +392,7 @@ async function processMention(
                 break;
             }
         }
+        
     } catch (error) {
         console.error("Aether Slack mention error:", error);
 

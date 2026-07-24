@@ -22,7 +22,9 @@ export interface IUser extends Document {
   githubUsername?: string;
   githubAvatar?: string;
   githubAccessToken?: string;
-  slack:{
+  githubLastSyncAt?: Date;
+
+  slack: {
     accessToken: string;
     teamId: string;
     teamName: string;
@@ -42,17 +44,18 @@ export interface IUser extends Document {
     channelId?: string;
     resourceId?: string;
     expiration?: string;
+    lastSyncAt: Date
   },
   notion: {
-  accessToken: string;
-  botId: string;
-  workspaceId: string;
-  workspaceName: string;
-  workspaceIcon?: string;
-  owner?: any;
-  connected: boolean;
-  lastSyncAt?: Date;
-};
+    accessToken: string;
+    botId: string;
+    workspaceId: string;
+    workspaceName: string;
+    workspaceIcon?: string;
+    owner?: any;
+    connected: boolean;
+    lastSyncAt?: Date;
+  };
 
   createdAt: Date;
   updatedAt: Date;
@@ -137,73 +140,73 @@ const UserSchema = new Schema<IUser>(
     },
 
     slack: {
-  accessToken: {
-    type: String,
-  },
+      accessToken: {
+        type: String,
+      },
 
-  teamId: {
-    type: String,
-  },
+      teamId: {
+        type: String,
+      },
 
-  teamName: {
-    type: String,
-  },
+      teamName: {
+        type: String,
+      },
 
-  userId: {
-    type: String,
-  },
+      userId: {
+        type: String,
+      },
 
-  botUserId: {
-    type: String,
-  },
+      botUserId: {
+        type: String,
+      },
 
-  appId: {
-    type: String,
-  },
+      appId: {
+        type: String,
+      },
 
-  connected: {
-    type: Boolean,
-    default: false,
-  },
+      connected: {
+        type: Boolean,
+        default: false,
+      },
 
-  lastSyncAt: {
-    type: Date,
-  },
-},
-notion: {
-  accessToken: {
-    type: String,
-  },
+      lastSyncAt: {
+        type: Date,
+      },
+    },
+    notion: {
+      accessToken: {
+        type: String,
+      },
 
-  botId: {
-    type: String,
-  },
+      botId: {
+        type: String,
+      },
 
-  workspaceId: {
-    type: String,
-  },
+      workspaceId: {
+        type: String,
+      },
 
-  workspaceName: {
-    type: String,
-  },
+      workspaceName: {
+        type: String,
+      },
 
-  workspaceIcon: {
-    type: String,
-  },
+      workspaceIcon: {
+        type: String,
+      },
 
-  owner: {
-    type: Schema.Types.Mixed,
-  },
+      owner: {
+        type: Schema.Types.Mixed,
+      },
 
-  connected: {
-    type: Boolean,
-    default: false,
-  },
+      connected: {
+        type: Boolean,
+        default: false,
+      },
 
-  lastSyncAt: {
-    type: Date,
-  },
-},
+      lastSyncAt: {
+        type: Date,
+      },
+    },
 
     googleCalendar: {
       accessToken: {
@@ -234,14 +237,20 @@ notion: {
       expiration: {
         type: String,
       },
+      lastSyncAt: {
+        type: Date,
+      },
     },
 
     githubAccessToken: {
       type: String,
       default: "",
     },
+    githubLastSyncAt: {
+      type: Date,
+    },
   },
-  
+
   {
     timestamps: true,
   }
