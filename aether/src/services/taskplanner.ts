@@ -2,7 +2,7 @@ export interface Task {
   id: string;
   title: string;
   status: "open" | "in_progress" | "done";
-  source: "github" | "jira" | "ai";
+  source: "github" | "jira" | "ai" | "notion" | "slack";
   priority?: "high" | "medium" | "low";
   dueDate?: string;
   githubIssueNumber?: number;

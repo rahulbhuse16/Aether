@@ -7,6 +7,7 @@ import { ENV } from "../config/env";
 import { groqService, ProjectContext } from "../services/groq";
 import { slackMessagingService } from "../services/slack";
 import { githubService } from "../services/github-service";
+import { getRelevantNotionContext } from "../services/notion";
 import { WebClient } from "@slack/web-api";
 import Groq from "groq-sdk";
 
@@ -263,10 +264,19 @@ async function processMention(
                     repoFullName
                 );
 
+                // Optional Notion knowledge — getRelevantNotionContext always
+                // resolves gracefully (empty) when the user isn't connected,
+                // so this call is safe to make unconditionally.
+                const notionCtx = await getRelevantNotionContext(
+                    userIdStr,
+                    `${repoFullName} ${issueContext.slice(0, 200)}`
+                );
+
                 const analysis = await groqService.analyzeGithubIssue(
                     issueContext,
                     projects,
-                    repoCode
+                    repoCode,
+                    notionCtx.contextBlock
                 );
 
                 await slackMessagingService.postIssueAnalysis(
@@ -316,7 +326,7 @@ async function processMention(
                     id: `slack-${crypto.randomUUID()}`,
                     title,
                     status: "open",
-                    source: "ai",
+                    source: "slack",
                     priority: classification.taskPriority || "medium",
                     user: user._id,
                     project: defaultProject._id,
@@ -348,10 +358,13 @@ async function processMention(
                     ? await githubService.getRepoCodeContext(userIdStr, messageText, repoFullName)
                     : null;
 
+                const notionCtx = await getRelevantNotionContext(userIdStr, messageText);
+
                 const analysis = await groqService.analyzeBugReport(
                     messageText,
                     projects,
-                    repoCode
+                    repoCode,
+                    notionCtx.contextBlock
                 );
 
                 await slackMessagingService.postBugAnalysis(
@@ -377,10 +390,13 @@ async function processMention(
                     ? await githubService.getRepoCodeContext(userIdStr, messageText, repoFullName)
                     : null;
 
+                const notionCtx = await getRelevantNotionContext(userIdStr, messageText);
+
                 const answer = await groqService.answerGeneralQuestion(
                     messageText,
                     projects,
-                    repoCode
+                    repoCode,
+                    notionCtx.contextBlock
                 );
 
                 await slackMessagingService.postText(
@@ -392,7 +408,6 @@ async function processMention(
                 break;
             }
         }
-        
     } catch (error) {
         console.error("Aether Slack mention error:", error);
 

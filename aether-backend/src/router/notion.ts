@@ -30,5 +30,16 @@ notionRoutes.get("/pages", verifyJWT, notionController.getNotionPages);
 notionRoutes.get("/search", verifyJWT, notionController.searchNotion);
 notionRoutes.post("/pages", verifyJWT, notionController.createNotionPage);
 notionRoutes.delete("/disconnect", verifyJWT, notionController.disconnectNotion);
+notionRoutes.post(
+    "/pages/:pageId/meeting-notes/analyze",
+    verifyJWT,
+    notionController.analyzeMeetingNotes
+);
+notionRoutes.post(
+    "/meeting-notes/confirm",
+    verifyJWT,
+    notionController.confirmMeetingActionItems
+);
+
 
 export default notionRoutes;

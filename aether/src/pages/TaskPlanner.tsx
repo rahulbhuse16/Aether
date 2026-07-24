@@ -10,7 +10,7 @@ import {
   AlertTriangle,
   Sparkles,
 } from "lucide-react";
-import { FaGithub } from "react-icons/fa";
+import { FaGithub, FaSlack } from "react-icons/fa";
 import { AppShell } from "../components/AppShell";
 import { GlassCard } from "../components/ui/GlassCard";
 import { PageSection } from "../components/ui/PageSection";
@@ -21,6 +21,7 @@ import { toggleTask, addTask, updateTaskStatus, clearTasksError} from "../store/
 
 import { TaskBoardSkeleton } from "../components/ui/Skeleton";
 import { updateTaskStatusRemote, createTaskRemote, toggleTaskRemote, getTasksByProjectId, type Task  } from "../services/taskplanner";
+import { SiNotion } from "react-icons/si";
 
 // GitHub's webhook is what makes this "real-time" — the moment an issue changes
 // on GitHub, the backend writes it to Mongo immediately. The frontend doesn't
@@ -31,6 +32,8 @@ const SOURCE_ICON: Record<Task["source"], React.ReactNode> = {
   github: <FaGithub className="h-3.5 w-3.5" />,
   jira: <span className="text-[10px] font-bold">J</span>,
   ai: <span className="text-[10px]">✦</span>,
+  slack:<FaSlack className="h-3.5 w-3.5"/>,
+  notion:<SiNotion className="h-3.5 w-3.5"/>
 };
 
 const PRIORITY_COLORS: Record<NonNullable<Task["priority"]>, string> = {

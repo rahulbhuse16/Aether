@@ -56,6 +56,14 @@ export interface DailySummaryOutput {
   recommendedAction: string;
 }
 
+export interface ActionItem {
+  title: string;
+  description: string;
+  assignee: string | null;
+  priority: "low" | "medium" | "high" | null;
+  dueDate: string | null; // ISO date if the notes state one, else null
+}
+
 /**
  * Optional project context injected into every AI call when available.
  * This grounds Aether's responses in the user's actual codebase rather
@@ -117,6 +125,22 @@ function buildRepoCodeContextBlock(repoCode?: RepoCodeGrounding | null): string 
 These are the actual files from the user's repository most relevant to this request. Ground your analysis in this real code: reference the exact file paths, function/variable names, and existing patterns shown below. Do NOT invent file names or code that isn't shown here.
 ${repoCode.readmeExcerpt ? `README excerpt:\n${repoCode.readmeExcerpt}\n\n` : ""}${fileBlocks}
 --- END REPO CODE CONTEXT ---`;
+}
+
+/**
+ * Renders relevant Notion pages (docs, ADRs, runbooks) into the prompt.
+ * This is entirely optional and additive — every caller below still works
+ * identically when notionContext is omitted or empty, which is exactly
+ * what keeps AI features functional for users who haven't connected
+ * Notion at all.
+ */
+function buildNotionContextBlock(notionContext?: string): string {
+  if (!notionContext || !notionContext.trim()) return "";
+
+  return `\n\n--- NOTION KNOWLEDGE CONTEXT ---
+The following are excerpts from the user's connected Notion workspace (docs, ADRs, runbooks) that appear relevant. Use them as supporting context and cite the page title when you draw on them — but don't treat them as more authoritative than the actual code/issue/error being analyzed.
+${notionContext}
+--- END NOTION KNOWLEDGE CONTEXT ---`;
 }
 
 /**
@@ -243,10 +267,12 @@ Respond ONLY with a JSON object matching exactly:
   analyzeGithubIssue: async (
     issueContext: string,
     projects?: ProjectContext[],
-    repoCode?: RepoCodeGrounding | null
+    repoCode?: RepoCodeGrounding | null,
+    notionContext?: string
   ): Promise<IssueAnalysis> => {
     const projectCtx = buildProjectContextBlock(projects);
     const repoCtx = buildRepoCodeContextBlock(repoCode);
+    const notionCtx = buildNotionContextBlock(notionContext);
 
     const system = `You are Aether, an AI engineering teammate posting directly into a Slack thread.
 You'll be given a GitHub issue's title, description, labels, and recent comments${repoCode ? ", plus the actual source files most relevant to it" : ""}.
@@ -267,7 +293,7 @@ You'll be given a GitHub issue's title, description, labels, and recent comments
    - 50-79: likely root cause but missing some diagnostic info.
    - 20-49: multiple plausible causes; need more info.
    - 0-19: mostly educated guessing.
-${projectCtx}${repoCtx}
+${projectCtx}${repoCtx}${notionCtx}
 
 Respond ONLY with a JSON object, no prose, no markdown fences, matching exactly:
 {
@@ -288,10 +314,12 @@ Respond ONLY with a JSON object, no prose, no markdown fences, matching exactly:
   analyzeBugReport: async (
     errorAndCode: string,
     projects?: ProjectContext[],
-    repoCode?: RepoCodeGrounding | null
+    repoCode?: RepoCodeGrounding | null,
+    notionContext?: string
   ): Promise<BugAnalysis> => {
     const projectCtx = buildProjectContextBlock(projects);
     const repoCtx = buildRepoCodeContextBlock(repoCode);
+    const notionCtx = buildNotionContextBlock(notionContext);
 
     const system = `You are Aether's bug-analysis engine, replying inline in Slack to a developer who just pasted an error.
 
@@ -315,7 +343,7 @@ Respond ONLY with a JSON object, no prose, no markdown fences, matching exactly:
 - 50-79: error is clear but could have multiple causes; one is most likely.
 - 20-49: only a bare error message with little context.
 - 0-19: can't meaningfully diagnose from what was provided.
-${projectCtx}${repoCtx}
+${projectCtx}${repoCtx}${notionCtx}
 
 Respond ONLY with a JSON object, no prose, no markdown fences, matching exactly:
 {
@@ -372,11 +400,13 @@ Respond ONLY with a JSON object, no prose, no markdown fences, matching exactly:
   answerGeneralQuestion: async (
     messageText: string,
     projects?: ProjectContext[],
-    repoCode?: RepoCodeGrounding | null
+    repoCode?: RepoCodeGrounding | null,
+    notionContext?: string
   ): Promise<string> => {
     const projectCtx = buildProjectContextBlock(projects);
     const repoCtx = buildRepoCodeContextBlock(repoCode);
-    const hasContext = (projects && projects.length > 0) || !!repoCode;
+    const notionCtx = buildNotionContextBlock(notionContext);
+    const hasContext = (projects && projects.length > 0) || !!repoCode || !!notionContext;
 
     const system = `You are Aether, an AI engineering teammate mentioned directly in a Slack thread.
 You are part of the team — not a generic chatbot. Answer like a senior engineer who knows the project.
@@ -394,7 +424,7 @@ You are part of the team — not a generic chatbot. Answer like a senior enginee
 4. Write like a sharp, knowledgeable teammate replying in Slack: direct, helpful, no filler.
    - No greetings, no sign-offs, no "Great question!" — just answer.
    - Use Slack formatting: *bold* for emphasis, \`code\` for inline code, \`\`\` for blocks.
-${projectCtx}${repoCtx}`;
+${projectCtx}${repoCtx}${notionCtx}`;
 
     const response = await groq.chat.completions.create({
       model: MODEL,
@@ -410,5 +440,37 @@ ${projectCtx}${repoCtx}`;
       response.choices[0]?.message?.content?.trim() ??
       "I couldn't generate a response for that — try rephrasing?"
     );
+  },
+
+  /**
+   * Extracts structured action items from meeting-notes-style Notion page
+   * content. Purely an extraction step — never creates anything; the
+   * caller (notion.controller.ts) requires explicit user confirmation
+   * before turning any of these into real tasks.
+   */
+  extractActionItemsFromNotes: async (
+    notesContent: string
+  ): Promise<{ items: ActionItem[] }> => {
+    const system = `You are extracting action items from a set of meeting notes stored in Notion.
+
+## Task
+Read the notes and identify concrete action items — things someone committed to doing, follow-ups, or decisions that require a next step. Do NOT invent action items that aren't actually implied by the notes.
+
+## Rules
+- title: short, imperative (e.g. "Update auth middleware to use refresh tokens"), under 80 chars.
+- description: 1-2 sentences of relevant context from the notes, or "" if the title is fully self-explanatory.
+- assignee: the person's name if the notes clearly assign it to someone (e.g. "Rahul to update the docs" → "Rahul"). Otherwise null. Never guess.
+- priority: "high" only if the notes explicitly signal urgency (blocking, critical, ASAP); "low" if explicitly low-stakes/nice-to-have; otherwise "medium". Default to "medium" when unclear.
+- dueDate: an ISO date (YYYY-MM-DD) ONLY if the notes state an explicit date or unambiguous relative date you can resolve (e.g. "by Friday" is too ambiguous without today's date — leave null unless a concrete date/day-of-week-with-date context is given). Otherwise null.
+- If the notes contain no real action items, return an empty array — do not fabricate generic follow-ups just to have something to show.
+
+Respond ONLY with a JSON object, no prose, no markdown fences, matching exactly:
+{
+  "items": [
+    { "title": string, "description": string, "assignee": string | null, "priority": "low" | "medium" | "high" | null, "dueDate": string | null }
+  ]
+}`;
+
+    return completeJson<{ items: ActionItem[] }>(system, notesContent);
   },
 };

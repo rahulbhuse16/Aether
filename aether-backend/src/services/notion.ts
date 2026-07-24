@@ -297,3 +297,77 @@ export const syncNotionToDB = async (
         );
     }
 };
+
+
+
+const MAX_CONTEXT_PAGES = 3;
+const MAX_CHARS_PER_PAGE = 1500;
+
+export interface NotionContextResult {
+    pages: { title: string; url: string; excerpt: string }[];
+    /** Pre-formatted block ready to drop into a prompt; "" when nothing matched. */
+    contextBlock: string;
+}
+
+const EMPTY: NotionContextResult = { pages: [], contextBlock: "" };
+
+/**
+ * Finds Notion pages relevant to a topic (an issue description, an error
+ * message, a repo/feature name, a Slack question — anything free-text)
+ * and returns them pre-formatted for injection into an AI prompt.
+ *
+ * This is intentionally the ONLY thing other AI features need to call.
+ * It never throws and never requires the caller to check "is Notion
+ * connected?" first — disconnected/no-match/error all just return EMPTY,
+ * so existing AI features keep working unchanged when Notion isn't set up.
+ */
+export async function getRelevantNotionContext(
+    userId: string,
+    topic: string
+): Promise<NotionContextResult> {
+    try {
+        if (!topic || !topic.trim()) return EMPTY;
+
+        const user = await User.findById(userId).select("notion");
+        if (!user?.notion?.connected) return EMPTY;
+
+        const terms = topic
+            .toLowerCase()
+            .split(/[^a-z0-9]+/)
+            .filter((t) => t.length > 2)
+            .slice(0, 8);
+
+        if (terms.length === 0) return EMPTY;
+
+        const escaped = terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+        const regex = escaped.join("|");
+
+        const matches = await NotionPage.find({
+            userId,
+            archived: false,
+            $or: [
+                { title: { $regex: regex, $options: "i" } },
+                { content: { $regex: regex, $options: "i" } },
+            ],
+        })
+            .sort({ lastEditedTime: -1 })
+            .limit(MAX_CONTEXT_PAGES);
+
+        if (matches.length === 0) return EMPTY;
+
+        const pages = matches.map((p) => ({
+            title: p.title,
+            url: p.url,
+            excerpt: (p.content || "").slice(0, MAX_CHARS_PER_PAGE),
+        }));
+
+        const contextBlock = pages
+            .map((p) => `--- ${p.title} (${p.url}) ---\n${p.excerpt || "(no content synced)"}`)
+            .join("\n\n");
+
+        return { pages, contextBlock };
+    } catch (error) {
+        console.error("getRelevantNotionContext error:", error);
+        return EMPTY;
+    }
+}

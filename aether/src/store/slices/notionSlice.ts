@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { notionService, type NotionPage } from "../../services/notion";
+import { notionService,type NotionPage, type ActionItem } from "../../services/notion";
 
 interface NotionState {
   connected: boolean;
@@ -11,6 +11,18 @@ interface NotionState {
   loading: boolean;
   syncing: boolean;
   error: string | null;
+
+  // Meeting notes → action items
+  meetingNotes: {
+    sourcePageId: string | null;
+    sourcePageTitle: string | null;
+    sourcePageUrl: string | null;
+    items: ActionItem[];
+    analyzing: boolean;
+    confirming: boolean;
+    confirmedCount: number | null;
+    error: string | null;
+  };
 }
 
 const initialState: NotionState = {
@@ -23,6 +35,17 @@ const initialState: NotionState = {
   loading: false,
   syncing: false,
   error: null,
+
+  meetingNotes: {
+    sourcePageId: null,
+    sourcePageTitle: null,
+    sourcePageUrl: null,
+    items: [],
+    analyzing: false,
+    confirming: false,
+    confirmedCount: null,
+    error: null,
+  },
 };
 
 export const getNotionStatus = createAsyncThunk("notion/getStatus", async () => {
@@ -57,10 +80,44 @@ export const disconnectNotion = createAsyncThunk("notion/disconnect", async () =
   await notionService.disconnect();
 });
 
+export const analyzeMeetingNotes = createAsyncThunk(
+  "notion/analyzeMeetingNotes",
+  async (notionPageId: string) => {
+    const result = await notionService.analyzeMeetingNotes(notionPageId);
+    return { notionPageId, ...result };
+  }
+);
+
+export const confirmMeetingActionItems = createAsyncThunk(
+  "notion/confirmMeetingActionItems",
+  async (args: { sourcePageId: string; sourcePageTitle: string; items: ActionItem[] }) => {
+    return await notionService.confirmActionItems(
+      args.sourcePageId,
+      args.sourcePageTitle,
+      args.items
+    );
+  }
+);
+
 const notionSlice = createSlice({
   name: "notion",
   initialState,
-  reducers: {},
+  reducers: {
+    // Local edits before confirming — the extraction is a starting point,
+    // not the final word; the user can rewrite/deselect items freely.
+    updateMeetingActionItem: (
+      state,
+      action: { payload: { index: number; item: ActionItem } }
+    ) => {
+      state.meetingNotes.items[action.payload.index] = action.payload.item;
+    },
+    removeMeetingActionItem: (state, action: { payload: number }) => {
+      state.meetingNotes.items.splice(action.payload, 1);
+    },
+    clearMeetingNotesState: (state) => {
+      state.meetingNotes = initialState.meetingNotes;
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(getNotionStatus.pending, (state) => {
@@ -122,8 +179,43 @@ const notionSlice = createSlice({
         state.workspaceName = null;
         state.pages = [];
         state.total = 0;
+      })
+
+      .addCase(analyzeMeetingNotes.pending, (state) => {
+        state.meetingNotes.analyzing = true;
+        state.meetingNotes.error = null;
+        state.meetingNotes.confirmedCount = null;
+      })
+      .addCase(analyzeMeetingNotes.fulfilled, (state, action) => {
+        state.meetingNotes.analyzing = false;
+        state.meetingNotes.sourcePageId = action.payload.notionPageId;
+        state.meetingNotes.sourcePageTitle = action.payload.pageTitle;
+        state.meetingNotes.sourcePageUrl = action.payload.pageUrl;
+        state.meetingNotes.items = action.payload.items;
+      })
+      .addCase(analyzeMeetingNotes.rejected, (state, action) => {
+        state.meetingNotes.analyzing = false;
+        state.meetingNotes.error =
+          action.error.message ?? "Failed to analyze meeting notes";
+      })
+
+      .addCase(confirmMeetingActionItems.pending, (state) => {
+        state.meetingNotes.confirming = true;
+        state.meetingNotes.error = null;
+      })
+      .addCase(confirmMeetingActionItems.fulfilled, (state, action) => {
+        state.meetingNotes.confirming = false;
+        state.meetingNotes.confirmedCount = action.payload.tasks.length;
+        state.meetingNotes.items = [];
+      })
+      .addCase(confirmMeetingActionItems.rejected, (state, action) => {
+        state.meetingNotes.confirming = false;
+        state.meetingNotes.error =
+          action.error.message ?? "Failed to create tasks from action items";
       });
   },
 });
 
+export const { updateMeetingActionItem, removeMeetingActionItem, clearMeetingNotesState } =
+  notionSlice.actions;
 export default notionSlice.reducer;

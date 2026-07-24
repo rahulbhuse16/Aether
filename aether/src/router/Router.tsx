@@ -24,17 +24,21 @@ import SlackChat from "../pages/SlackChat";
 import AetherActivity from "../pages/SlackSync";
 import Calendar from "../pages/Calendar";
 import Notion from "../pages/Notion";
+import NotFoundPage from "../pages/NotFound";
 
 const Router = () => {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="*" element={<NotFoundPage />} />
+                  <Route path="/oauth/callback" element={<OAuthCallback />} />
+
         <Route element={<PublicRoute />}>
           <Route path="/auth" element={<AuthWrapper />} />
           <Route path="/" element={<Hero />} />
           <Route path="/pricing" element={<Pricing />} />
-          <Route path="/oauth/callback" element={<OAuthCallback />} />
           <Route path="/reset-password" element={<ForgotPwd />} />
+          
 
 
         </Route>

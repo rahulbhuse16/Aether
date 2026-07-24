@@ -6,6 +6,10 @@ import { saveNotification } from "../utils/notifications";
 import { NotificationType, NotificationPriority } from "../models/notification";
 import { ENV } from "../config/env";
 import { syncNotionToDB } from "../services/notion";
+import { Task } from "../models/task";
+import { groqService, ActionItem } from "../services/groq";
+import { getPageContentAsText } from "../utils/notion";
+import { Project } from "../models/project";
 
 const {
     NOTION_CLIENT_ID,
@@ -464,5 +468,135 @@ export const disconnectNotion = async (req: Request, res: Response): Promise<voi
     } catch (error) {
         console.error("disconnectNotion error:", error);
         res.status(500).json({ message: "Failed to disconnect Notion" });
+    }
+};
+
+
+
+ 
+/**
+ * Extracts structured action items from a synced Notion page's content.
+ * Does NOT create any tasks — purely returns candidates for the user to
+ * review, edit, deselect, and confirm client-side.
+ */
+export const analyzeMeetingNotes = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const userId = getAuthedUserId(req);
+        if (!userId) {
+            res.status(401).json({ message: "Unauthorized" });
+            return;
+        }
+ 
+        const { pageId } = req.params; // notionPageId, not our Mongo _id
+ 
+        const page = await NotionPage.findOne({ userId, notionPageId: pageId });
+        if (!page) {
+            res.status(404).json({ message: "Notion page not found — try syncing first." });
+            return;
+        }
+ 
+        let content = page.content;
+ 
+        // Content might be missing if this page was synced before the
+        // content-sync feature existed, or was created via createNotionPage
+        // (which doesn't back-fill content). Fetch it on demand rather
+        // than forcing a full re-sync.
+        if (!content) {
+            const user = await User.findById(userId);
+            if (!user?.notion?.connected || !user.notion.accessToken) {
+                res.status(400).json({ message: "Notion is not connected for this user" });
+                return;
+            }
+            const notion = new Client({ auth: user.notion.accessToken });
+            content = await getPageContentAsText(notion, pageId);
+            await NotionPage.findByIdAndUpdate(page._id, { $set: { content } });
+        }
+ 
+        if (!content || content.trim().length < 20) {
+            res.status(400).json({
+                message: "This page doesn't have enough content to extract action items from.",
+            });
+            return;
+        }
+ 
+        const { items } = await groqService.extractActionItemsFromNotes(content);
+ 
+        res.status(200).json({ pageTitle: page.title, pageUrl: page.url, items });
+    } catch (error) {
+        console.error("analyzeMeetingNotes error:", error);
+        res.status(500).json({ message: "Failed to analyze meeting notes" });
+    }
+};
+ 
+/**
+ * Creates Aether tasks from user-confirmed action items. The frontend
+ * sends back whatever subset of items the user kept/edited — this does
+ * NOT re-run extraction, so it trusts the shape but not the source
+ * (still validates each item has a title before creating).
+ */
+export const confirmMeetingActionItems = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const userId = getAuthedUserId(req);
+        if (!userId) {
+            res.status(401).json({ message: "Unauthorized" });
+            return;
+        }
+ 
+        const { sourcePageId, sourcePageTitle, items } = req.body as {
+            sourcePageId?: string;
+            sourcePageTitle?: string;
+            items: ActionItem[];
+        };
+ 
+        if (!Array.isArray(items) || items.length === 0) {
+            res.status(400).json({ message: "No action items to create" });
+            return;
+        }
+ 
+        const validItems = items.filter((i) => i.title && i.title.trim());
+        if (validItems.length === 0) {
+            res.status(400).json({ message: "Every action item needs a title" });
+            return;
+        }
+ 
+        // Same stopgap as the Slack create_task flow: Task.project is
+        // required, but there's still no per-feature way to pick one.
+        const defaultProject = await Project.findOne({ owner: userId }).sort({ createdAt: 1 });
+        if (!defaultProject) {
+            res.status(400).json({
+                message: "You need at least one project before creating tasks from Notion.",
+            });
+            return;
+        }
+ 
+        const created = await Promise.all(
+            validItems.map((item) =>
+                Task.create({
+                    id: `notion-${crypto.randomUUID()}`,
+                    title: item.title.trim(),
+                    status: "open",
+                    source: "notion",
+                    priority: item.priority || "medium",
+                    dueDate: item.dueDate,
+                    user: userId,
+                    project: defaultProject._id,
+                })
+            )
+        );
+ 
+        await saveNotification({
+            userId,
+            type: NotificationType.SYSTEM,
+            priority: NotificationPriority.LOW,
+            title: "Tasks created from Notion meeting notes",
+            description: `Created ${created.length} task${created.length === 1 ? "" : "s"} from "${sourcePageTitle ?? "a Notion page"}".`,
+            href: "/tasks",
+            metadata: { source: "notion", sourcePageId, taskCount: created.length },
+        });
+ 
+        res.status(201).json({ success: true, tasks: created });
+    } catch (error) {
+        console.error("confirmMeetingActionItems error:", error);
+        res.status(500).json({ message: "Failed to create tasks from action items" });
     }
 };

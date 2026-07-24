@@ -287,7 +287,7 @@ export const googleCallback = async (req: Request, res: Response): Promise<void>
     const savedState = req.cookies?.[OAUTH_STATE_COOKIE];
 
     if (!code || !state || state !== savedState) {
-      res.redirect(`${FRONTEND_URL}/auth?error=oauth_state_mismatch`);
+      res.redirect(`${FRONTEND_URL}/oauth/callback?error=oauth_state_mismatch`);
       return;
     }
     res.clearCookie(OAUTH_STATE_COOKIE);
@@ -333,7 +333,7 @@ export const googleCallback = async (req: Request, res: Response): Promise<void>
     res.redirect(`${FRONTEND_URL}/oauth/callback?token=${token}&userId=${user._id}`);
   } catch (err: any) {
     console.error("Google OAuth error:", err?.response?.data ?? err);
-    res.redirect(`${FRONTEND_URL}/auth?error=google_oauth_failed`);
+    res.redirect(`${FRONTEND_URL}/oauth/callback?error=${err?.message || 'google_oauth_failed'}`);
   }
 };
 
@@ -455,6 +455,6 @@ export const githubCallback = async (req: Request, res: Response): Promise<void>
     res.redirect(`${FRONTEND_URL}/oauth/callback?token=${token}&userId=${user._id}`);
   } catch (err: any) {
     console.error("GitHub OAuth error:", err?.response?.data ?? err);
-    res.redirect(`${FRONTEND_URL}/auth?error=github_oauth_failed`);
+    res.redirect(`${FRONTEND_URL}/oauth/callback?error=${err?.message ?? "github_oauth_failed"}`);
   }
 };

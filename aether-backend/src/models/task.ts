@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export type TaskStatus = "open" | "in_progress" | "done";
-export type TaskSource = "github" | "jira" | "ai";
+export type TaskSource = "github" | "jira" | "ai" | "slack" | "notion";
 export type TaskPriority = "high" | "medium" | "low";
 
 // Shape sent to / received from the frontend. Keep this 1:1 with
@@ -16,9 +16,8 @@ export interface ITask extends Document {
   user: mongoose.Types.ObjectId;
   githubIssueNumber?: number; // present only when source === "github"
   githubIssueUrl?: string;
-  githubIssueId ?: string;
-  project : mongoose.Types.ObjectId;
-  
+  githubIssueId?: string;
+  project: mongoose.Types.ObjectId;
 }
 
 const TaskSchema = new Schema<ITask>(
@@ -26,15 +25,14 @@ const TaskSchema = new Schema<ITask>(
     id: { type: String, required: true, unique: true },
     title: { type: String, required: true },
     status: { type: String, enum: ["open", "in_progress", "done"], default: "open" },
-    source: { type: String, enum: ["github", "jira", "ai"], required: true },
+    source: { type: String, enum: ["github", "jira", "ai", "slack", "notion"], required: true },
     priority: { type: String, enum: ["high", "medium", "low"] },
     dueDate: { type: String },
     user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     githubIssueNumber: { type: Number },
     githubIssueUrl: { type: String },
     githubIssueId: { type: String },
-    project:{type : Schema.Types.ObjectId, ref: "Project", required: true }
-
+    project: { type: Schema.Types.ObjectId, ref: "Project", required: true },
   },
   { timestamps: true }
 );
@@ -45,4 +43,4 @@ TaskSchema.methods.toJSON = function () {
   return { id, title, status, source, priority, dueDate, githubIssueNumber, githubIssueUrl };
 };
 
-export const Task= mongoose.model<ITask>("Task", TaskSchema);
+export const Task = mongoose.model<ITask>("Task", TaskSchema);

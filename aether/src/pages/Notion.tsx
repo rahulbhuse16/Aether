@@ -19,6 +19,7 @@ import {
   ArrowUpDown,
   Clock,
   X,
+  ClipboardList,
 } from "lucide-react";
 import { SiNotion } from "react-icons/si";
 import { AppShell } from "../components/AppShell";
@@ -26,6 +27,7 @@ import { GlassCard } from "../components/ui/GlassCard";
 import { PageSection } from "../components/ui/PageSection";
 import { Button } from "../components/ui/Button";
 import { CreateNotionPageModal } from "../components/notion/CreateNotionPageModal";
+import { MeetingNotesActionItems } from "../components/notion/MeetingNotesSectionModal";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
   getNotionStatus,
@@ -34,7 +36,7 @@ import {
   searchNotion,
   disconnectNotion,
 } from "../store/slices/notionSlice";
-import { notionService,type NotionPage } from "../services/notion";
+import { notionService, type NotionPage } from "../services/notion";
 
 type ViewMode = "list" | "grid";
 type SortMode = "recent" | "alpha";
@@ -78,6 +80,10 @@ export default function Notion() {
   const [limit, setLimit] = useState(25);
   const [syncBanner, setSyncBanner] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [meetingNotesTarget, setMeetingNotesTarget] = useState<{
+    notionPageId: string;
+    title: string;
+  } | null>(null);
 
   const [pinnedIds, setPinnedIds] = useState<string[]>(() => readIds(PINNED_KEY));
   const [recentIds, setRecentIds] = useState<string[]>(() => readIds(RECENTS_KEY));
@@ -366,16 +372,32 @@ export default function Notion() {
                           <p className="mb-3 text-[11px] text-[#55575F]">
                             Updated {timeAgo(p.lastEditedTime)}
                           </p>
-                          <a
-                            href={p.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={() => recordView(p.id)}
-                            className="flex items-center gap-1 text-[11.5px] text-[#94969E] hover:text-[#F4F3EF]"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                            Open
-                          </a>
+                          <div className="flex items-center gap-3">
+                            <a
+                              href={p.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={() => recordView(p.id)}
+                              className="flex items-center gap-1 text-[11.5px] text-[#94969E] hover:text-[#F4F3EF]"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              Open
+                            </a>
+                            <button
+                              onClick={() =>
+                                setMeetingNotesTarget({ notionPageId: p.notionPageId, title: p.title })
+                              }
+                              className={`flex items-center gap-1 text-[11.5px] ${
+                                p.pageType === "meeting_notes"
+                                  ? "text-[#8B7FE8]"
+                                  : "text-[#94969E] hover:text-[#F4F3EF]"
+                              }`}
+                              title="Extract action items"
+                            >
+                              <ClipboardList className="h-3 w-3" />
+                              Action items
+                            </button>
+                          </div>
                         </GlassCard>
                       </motion.div>
                     );
@@ -421,6 +443,19 @@ export default function Notion() {
                             ) : (
                               <Copy className="h-3.5 w-3.5" />
                             )}
+                          </button>
+                          <button
+                            onClick={() =>
+                              setMeetingNotesTarget({ notionPageId: p.notionPageId, title: p.title })
+                            }
+                            className={`rounded-full p-1.5 ${
+                              p.pageType === "meeting_notes"
+                                ? "text-[#8B7FE8]"
+                                : "text-[#55575F] hover:text-[#F4F3EF]"
+                            }`}
+                            title="Extract action items"
+                          >
+                            <ClipboardList className="h-3.5 w-3.5" />
                           </button>
                           <a href={p.url} target="_blank" rel="noreferrer" onClick={() => recordView(p.id)}>
                             <Button size="sm" variant="ghost">
@@ -505,6 +540,13 @@ export default function Notion() {
       </div>
 
       <CreateNotionPageModal open={modalOpen} onClose={() => setModalOpen(false)} />
+
+      <MeetingNotesActionItems
+        open={!!meetingNotesTarget}
+        onClose={() => setMeetingNotesTarget(null)}
+        notionPageId={meetingNotesTarget?.notionPageId ?? null}
+        pageTitle={meetingNotesTarget?.title ?? ""}
+      />
     </AppShell>
   );
 }
