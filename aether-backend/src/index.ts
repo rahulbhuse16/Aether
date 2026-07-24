@@ -20,6 +20,7 @@ import cookieParser from "cookie-parser";
 import taskRouter from "./router/task-planner";
 import calendarRouter from "./router/calendar";
 import slackRouter from "./router/slack";
+import notionRouter from "./router/notion";
 
 const app = express();
 
@@ -64,6 +65,7 @@ app.use("/api/v1/email", emailRouter);
 app.use("/api/v1/task-planner", taskRouter);
 app.use("/api/v1/calendar",calendarRouter)
 app.use('/api/v1/slack',slackRouter)
+app.use('/api/v1/notion',notionRouter)
 
 connectDB();
 

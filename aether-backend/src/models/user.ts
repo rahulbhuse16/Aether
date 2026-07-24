@@ -42,7 +42,17 @@ export interface IUser extends Document {
     channelId?: string;
     resourceId?: string;
     expiration?: string;
-  }
+  },
+  notion: {
+  accessToken: string;
+  botId: string;
+  workspaceId: string;
+  workspaceName: string;
+  workspaceIcon?: string;
+  owner?: any;
+  connected: boolean;
+  lastSyncAt?: Date;
+};
 
   createdAt: Date;
   updatedAt: Date;
@@ -160,6 +170,40 @@ const UserSchema = new Schema<IUser>(
     type: Date,
   },
 },
+notion: {
+  accessToken: {
+    type: String,
+  },
+
+  botId: {
+    type: String,
+  },
+
+  workspaceId: {
+    type: String,
+  },
+
+  workspaceName: {
+    type: String,
+  },
+
+  workspaceIcon: {
+    type: String,
+  },
+
+  owner: {
+    type: Schema.Types.Mixed,
+  },
+
+  connected: {
+    type: Boolean,
+    default: false,
+  },
+
+  lastSyncAt: {
+    type: Date,
+  },
+},
 
     googleCalendar: {
       accessToken: {
@@ -197,6 +241,7 @@ const UserSchema = new Schema<IUser>(
       default: "",
     },
   },
+  
   {
     timestamps: true,
   }

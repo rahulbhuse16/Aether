@@ -45,6 +45,10 @@ export default function Settings() {
       window.location.href = `${API_BASE}/slack/connect?userId=${userId}`;
 
     }
+    else if(i.type==='notion'){
+      window.location.href = `${API_BASE}/notion/connect?userId=${userId}`;
+
+    }
 
   }
 

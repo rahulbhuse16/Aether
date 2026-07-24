@@ -23,6 +23,7 @@ import Slack from "../pages/Slack";
 import SlackChat from "../pages/SlackChat";
 import AetherActivity from "../pages/SlackSync";
 import Calendar from "../pages/Calendar";
+import Notion from "../pages/Notion";
 
 const Router = () => {
   return (
@@ -33,7 +34,7 @@ const Router = () => {
           <Route path="/" element={<Hero />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/oauth/callback" element={<OAuthCallback />} />
-                    <Route path="/reset-password" element={<ForgotPwd />} />
+          <Route path="/reset-password" element={<ForgotPwd />} />
 
 
         </Route>
@@ -54,10 +55,11 @@ const Router = () => {
           <Route path="/deployment" element={<DeploymentAgent />} />
           <Route path="/voice" element={<VoiceEngineer />} />
           <Route path="/planner" element={<TaskPlanner />} />
-           <Route path="/slack" element={<Slack />} />
-            <Route path="/slack-chat" element={<SlackChat />} />
-                        <Route path="/slack-ai" element={<AetherActivity />} />
-                        <Route path="/calendar" element={<Calendar />} />
+          <Route path="/slack" element={<Slack />} />
+          <Route path="/slack-chat" element={<SlackChat />} />
+          <Route path="/slack-ai" element={<AetherActivity />} />
+          <Route path="/calendar" element={<Calendar />} />
+          <Route path="/notion" element={<Notion />} />
 
         </Route>
       </Routes>

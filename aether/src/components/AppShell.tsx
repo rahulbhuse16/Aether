@@ -43,6 +43,7 @@ import { useSSENotification } from "../hooks/useSSENotification";
 import { FaSlack } from "react-icons/fa";
 import { WalkthroughTooltip } from "./ui/WalkthroughTooltip";
 import type { WalkthroughStep } from "./ui/WalkthroughTooltip";
+import { SiNotion } from "react-icons/si";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, id: "nav-dashboard" },
@@ -56,9 +57,11 @@ const NAV_ITEMS = [
   { label: "Meetings", href: "/meetings", icon: Mic, id: "nav-meetings" },
   { label: "Deployment", href: "/deployment", icon: Rocket, id: "nav-deployment" },
   { label: "Voice engineer", href: "/voice", icon: AudioLines, id: "nav-voice" },
-  { label: "Settings", href: "/settings", icon: Settings, id: "nav-settings" },
+  
   { label: "Slack", href: "/slack", icon: FaSlack, id: "nav-slack" },
   { label: "Calendar", href: "/calendar", icon: FaCalendarAlt, id: "nav-calendar" },
+  { label: "Notion", href: "/notion", icon: SiNotion, id: "nav-notion" },
+  { label: "Settings", href: "/settings", icon: Settings, id: "nav-settings" },
 ];
 
 const WALKTHROUGH_STEPS: WalkthroughStep[] = [
@@ -134,12 +137,7 @@ const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     description: "Speak your features into existence with AI-powered voice-to-code generation.",
     icon: <AudioLines className="h-5 w-5" />,
   },
-  {
-    target: "nav-settings",
-    title: "Settings",
-    description: "Manage your account settings, preferences, and integrations.",
-    icon: <Settings className="h-5 w-5" />,
-  },
+ 
   {
     target: "nav-slack",
     title: "Slack Integration",
@@ -151,6 +149,18 @@ const WALKTHROUGH_STEPS: WalkthroughStep[] = [
     title: "Calendar",
     description: "View and manage your schedule with integrated calendar functionality.",
     icon: <FaCalendarAlt className="h-5 w-5" />,
+  },
+  {
+    target: "nav-notion",
+    title: "Notion",
+    description: "Connect and manage your Notion workspace integrations",
+    icon: <SiNotion className="h-5 w-5" />,
+  },
+   {
+    target: "nav-settings",
+    title: "Settings",
+    description: "Manage your account settings, preferences, and integrations.",
+    icon: <Settings className="h-5 w-5" />,
   },
 ];
 

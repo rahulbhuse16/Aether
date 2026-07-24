@@ -33,6 +33,7 @@ export const loginWithEmail = async (
 
     return { success: true };
   } catch (error: any) {
+    toast.error(error?.response?.data?.message ?? "Something went wrong. Try again.")
     return {
       success: false,
       error: error?.response?.data?.message ?? "Something went wrong. Try again.",
@@ -53,7 +54,10 @@ export const signUpWithEmail = async (
 
     return { success: true };
   } catch (error: any) {
+        toast.error(error?.response?.data?.message ?? "Something went wrong. Try again.")
+
     return {
+      
       success: false,
       error: error?.response?.data?.message ?? "Something went wrong. Try again.",
     };

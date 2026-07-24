@@ -19,6 +19,8 @@ import slackReducer from './slices/slackSlice'
 import slackChatReducer from './slices/slickChatSlice'
 import slackSyncReducer from './slices/slackSyncSlice'
 import calendarReducer from './slices/calndarSlice'
+import notionReducer from './slices/notionSlice'
+
 
 export const store = configureStore({
   reducer: {
@@ -41,7 +43,8 @@ export const store = configureStore({
     slack: slackReducer,
     slackChat : slackChatReducer,
     aetherSlack : slackSyncReducer,
-    calendar:calendarReducer
+    calendar:calendarReducer,
+    notion:notionReducer
   },
 });
 
