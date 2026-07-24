@@ -5,6 +5,7 @@ import { NotionPage } from "../models/notion-page";
 import { saveNotification } from "../utils/notifications";
 import { NotificationType, NotificationPriority } from "../models/notification";
 import { ENV } from "../config/env";
+import { syncNotionToDB } from "../services/notion";
 
 const {
     NOTION_CLIENT_ID,
@@ -155,17 +156,58 @@ export const notionCallback = async (req: Request, res: Response): Promise<void>
  * depends on your Notion integration's verified webhook payload shape;
  * left minimal on purpose rather than guessing that shape.
  */
-export const notionWebhook = async (req: Request, res: Response): Promise<void> => {
+export const notionWebhook = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
     try {
-        if (req.body?.verification_token) {
-            console.log("Notion webhook verification token:", req.body.verification_token);
-            res.status(200).json({ challenge: req.body.verification_token });
+        const payload = req.body;
+
+        if (payload?.verification_token) {
+            console.log(
+                "Notion webhook verification token:",
+                payload.verification_token
+            );
+
+            res.status(200).json({
+                success: true,
+            });
+
             return;
         }
 
+        const {
+            type,
+            workspace_id,
+            entity,
+        } = payload;
+
+        const user = await User.findOne({
+            "notion.workspaceId": workspace_id,
+            "notion.connected": true,
+        });
+
+        if (!user) {
+            res.status(200).send("OK");
+            return;
+        }
+
+        const pageId = entity?.id;
+
+        await syncNotionToDB(
+            user._id.toString(),
+            pageId,
+            type
+        );
+
         res.status(200).send("OK");
+
     } catch (error) {
-        console.error("Notion webhook error:", error);
+        console.error(
+            "Notion webhook error:",
+            error
+        );
+
         res.status(200).send("OK");
     }
 };
