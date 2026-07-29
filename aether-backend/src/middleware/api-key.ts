@@ -197,7 +197,7 @@ export const apiKeyMiddleware = (
       /* -------------------------------------------------------------- */
       /* ATTACH API KEY TO REQUEST                                       */
       /* -------------------------------------------------------------- */
-
+     //@ts-ignore
       req.apiKey = {
         id: apiKey.id,
         userId: security.userId.toString(),
