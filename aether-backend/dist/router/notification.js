@@ -6,5 +6,5 @@ const auth_1 = require("../middleware/auth");
 const notificationsRouter = (0, express_1.Router)();
 notificationsRouter.get("/stream/:userId", notifications_1.notificationsSSE);
 notificationsRouter.get("/:id", auth_1.verifyJWT, notifications_1.getUserNotifications);
-notificationsRouter.patch("/:id/:notificationId", auth_1.verifyJWT, notifications_1.markNotificationAsRead);
+notificationsRouter.patch("/:id/:notificationId/read", auth_1.verifyJWT, notifications_1.markNotificationAsRead);
 exports.default = notificationsRouter;

@@ -189,14 +189,16 @@ const githubWebhookController = async (req, res) => {
         }).populate("owner");
         if (!projects.length)
             return res.status(200).json({ received: true });
-        if (payload.issue) {
+        if (payload) {
             await Promise.allSettled(projects.map(async (project) => {
                 const user = project.owner;
                 if (!user || !user._id) {
                     console.error("Owner user not found:", project.owner);
                     return;
                 }
-                await (0, github_sync_1.syncDBfromWebhook)(user, project, payload.issue, payload.action);
+                if (payload.issue) {
+                    await (0, github_sync_1.syncDBfromWebhook)(user, project, payload.issue, payload.action);
+                }
                 const notification = (0, notifications_1.buildGithubNotification)(event, payload.action, payload);
                 console.log("notification", notification);
                 if (notification) {

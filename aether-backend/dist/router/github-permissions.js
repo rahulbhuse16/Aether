@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const github_permissions_1 = require("../controller/github-permissions");
+const auth_1 = require("../middleware/auth");
+const githubPermissionsRouter = (0, express_1.Router)();
+githubPermissionsRouter.get("/:userId", auth_1.verifyJWT, github_permissions_1.getGitHubPermissions);
+githubPermissionsRouter.patch("/:userId", auth_1.verifyJWT, github_permissions_1.updateGitHubPermissions);
+githubPermissionsRouter.post("/:userId/sync", auth_1.verifyJWT, github_permissions_1.syncRepositories);
+exports.default = githubPermissionsRouter;

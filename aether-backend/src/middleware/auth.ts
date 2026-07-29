@@ -39,7 +39,8 @@ export const verifyJWT = (
     );
 
     // Attach decoded user information
-    req.user = decoded;
+    //@ts-ignore
+    req.user = decoded.userId;
 
     next();
   } catch (error) {

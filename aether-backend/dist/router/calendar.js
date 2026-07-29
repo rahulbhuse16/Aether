@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const calendar_1 = require("../controller/calendar");
+const calendarRouter = (0, express_1.Router)();
+calendarRouter.get("/connect", calendar_1.connectGoogle);
+calendarRouter.get("/callback", calendar_1.googleCalendarCallback);
+calendarRouter.post("/webhook", calendar_1.googlewebhook);
+calendarRouter.get("/status", calendar_1.getCalendarStatus);
+calendarRouter.get("/events", calendar_1.getCalendarEvents);
+calendarRouter.post("/create-meeting", calendar_1.createGoogleMeeting);
+exports.default = calendarRouter;

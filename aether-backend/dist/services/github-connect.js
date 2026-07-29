@@ -61,6 +61,7 @@ async function connectGithubAccount(userId, accessToken) {
     }
     user.githubAccessToken = accessToken;
     user.githubConnected = true;
+    user.githubLastSyncAt = new Date();
     await user.save();
     const octokit = githubClient(accessToken);
     const repos = await fetchAllRepos(octokit);

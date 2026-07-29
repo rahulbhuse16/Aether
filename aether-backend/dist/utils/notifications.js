@@ -288,7 +288,7 @@ const buildGithubNotification = (event, action, payload) => {
             type: notification_1.NotificationType.GITHUB,
             priority: notification_1.NotificationPriority.MEDIUM,
             title: "New GitHub comment",
-            description: `${actor} commented on ${issue ? "issue" : "pull request"} #${issue?.number}`,
+            description: `${actor} commented on ${issue ? "issue" : "pull request"} #${issue?.number}: ${comment.body}`,
             source: "github",
             href: issueUrl,
             icon: "message-circle",
@@ -351,7 +351,7 @@ const buildGithubNotification = (event, action, payload) => {
             ? notification_1.NotificationPriority.CRITICAL
             : notification_1.NotificationPriority.MEDIUM;
         return {
-            type: notification_1.NotificationType.GITHUB,
+            type: notification_1.NotificationType.DEPLOYMENT,
             priority,
             title: workflow?.conclusion === "failure"
                 ? "GitHub Actions failed"

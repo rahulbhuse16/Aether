@@ -25,20 +25,28 @@ import AetherActivity from "../pages/SlackSync";
 import Calendar from "../pages/Calendar";
 import Notion from "../pages/Notion";
 import NotFoundPage from "../pages/NotFound";
+import NotificationSettings from "../pages/NotificationSettings";
+import SecuritySettings from "../pages/SecuritySettings";
+import GitHubPermissions from "../pages/GitHubPermissions";
+import Incidents from "../pages/Incident";
+import Consent from "../pages/Consent";
+import OAuthClients from "../pages/OAuthClients";
 
 const Router = () => {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="*" element={<NotFoundPage />} />
-                  <Route path="/oauth/callback" element={<OAuthCallback />} />
+        <Route path="/oauth/callback" element={<OAuthCallback />} />
+        <Route path="/oauth/consent/:requestId" element={<Consent />} />
+
 
         <Route element={<PublicRoute />}>
           <Route path="/auth" element={<AuthWrapper />} />
           <Route path="/" element={<Hero />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/reset-password" element={<ForgotPwd />} />
-          
+
 
 
         </Route>
@@ -53,6 +61,11 @@ const Router = () => {
           <Route path="/docs-generator" element={<DocsGenerator />} />
           <Route path="/meetings" element={<Meetings />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/settings/notifications" element={<NotificationSettings />} />
+          <Route path="/settings/security" element={<SecuritySettings />} />
+          <Route path="/settings/security/oauth" element={<OAuthClients />} />
+
+          <Route path="/settings/github" element={<GitHubPermissions />} />
           <Route path="/api-agent" element={<ApiAgent />} />
           <Route path="/bugs" element={<BugFinder />} />
           <Route path="/architecture" element={<ArchitectureGenerator />} />
@@ -64,6 +77,7 @@ const Router = () => {
           <Route path="/slack-ai" element={<AetherActivity />} />
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/notion" element={<Notion />} />
+          <Route path="/incidents" element={<Incidents />} />
 
         </Route>
       </Routes>

@@ -99,9 +99,93 @@ const UserSchema = new mongoose_1.Schema({
         type: String,
         default: "",
     },
+    slack: {
+        accessToken: {
+            type: String,
+        },
+        teamId: {
+            type: String,
+        },
+        teamName: {
+            type: String,
+        },
+        userId: {
+            type: String,
+        },
+        botUserId: {
+            type: String,
+        },
+        appId: {
+            type: String,
+        },
+        connected: {
+            type: Boolean,
+            default: false,
+        },
+        lastSyncAt: {
+            type: Date,
+        },
+    },
+    notion: {
+        accessToken: {
+            type: String,
+        },
+        botId: {
+            type: String,
+        },
+        workspaceId: {
+            type: String,
+        },
+        workspaceName: {
+            type: String,
+        },
+        workspaceIcon: {
+            type: String,
+        },
+        owner: {
+            type: mongoose_1.Schema.Types.Mixed,
+        },
+        connected: {
+            type: Boolean,
+            default: false,
+        },
+        lastSyncAt: {
+            type: Date,
+        },
+    },
+    googleCalendar: {
+        accessToken: {
+            type: String,
+        },
+        refreshToken: {
+            type: String,
+        },
+        expiryDate: {
+            type: Number,
+        },
+        connected: {
+            type: Boolean,
+            default: false,
+        },
+        channelId: {
+            type: String,
+        },
+        resourceId: {
+            type: String,
+        },
+        expiration: {
+            type: String,
+        },
+        lastSyncAt: {
+            type: Date,
+        },
+    },
     githubAccessToken: {
         type: String,
         default: "",
+    },
+    githubLastSyncAt: {
+        type: Date,
     },
 }, {
     timestamps: true,

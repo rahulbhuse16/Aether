@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_1 = require("../middleware/auth");
+const incident_commander_1 = require("../controller/incident-commander");
+const incidentRouter = (0, express_1.Router)();
+incidentRouter.use(auth_1.verifyJWT);
+incidentRouter.post("/", incident_commander_1.createIncident);
+incidentRouter.get("/project/:projectId", incident_commander_1.getIncidentsByProject);
+incidentRouter.get("/:incidentId", incident_commander_1.getIncident);
+incidentRouter.patch("/:incidentId", incident_commander_1.patchIncident);
+incidentRouter.post("/:incidentId/analyze", incident_commander_1.analyzeIncident);
+exports.default = incidentRouter;

@@ -23,11 +23,20 @@ const meeting_agent_1 = __importDefault(require("./router/meeting-agent"));
 const email_1 = __importDefault(require("./router/email"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const task_planner_1 = __importDefault(require("./router/task-planner"));
+const calendar_1 = __importDefault(require("./router/calendar"));
+const slack_1 = __importDefault(require("./router/slack"));
+const notion_1 = __importDefault(require("./router/notion"));
+const security_1 = __importDefault(require("./router/security"));
+const github_permissions_1 = __importDefault(require("./router/github-permissions"));
+const incident_commander_1 = __importDefault(require("./router/incident-commander"));
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
 // IMPORTANT: GitHub webhook MUST come before express.json()
 app.use("/api/v1/github/webhook", express_1.default.raw({
     type: "application/json",
+}));
+app.use("/api/v1/slack/events", express_1.default.text({
+    type: "*/*",
 }));
 // Normal body parsers
 app.use(express_1.default.json());
@@ -50,6 +59,12 @@ app.use("/api/v1/notifications", notification_1.default);
 app.use("/api/v1/meetings", meeting_agent_1.default);
 app.use("/api/v1/email", email_1.default);
 app.use("/api/v1/task-planner", task_planner_1.default);
+app.use("/api/v1/calendar", calendar_1.default);
+app.use('/api/v1/slack', slack_1.default);
+app.use('/api/v1/notion', notion_1.default);
+app.use('/api/v1/security', security_1.default);
+app.use('/api/v1/github-permissions', github_permissions_1.default);
+app.use('/api/v1/incidents', incident_commander_1.default);
 (0, connectDB_1.connectDB)();
 app.listen(5000, () => {
     console.log("running on port 5000");

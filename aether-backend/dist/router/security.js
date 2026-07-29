@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const security_1 = require("../controller/security");
+const auth_1 = require("../middleware/auth");
+const securityRouter = (0, express_1.Router)();
+securityRouter.get("/:userId", auth_1.verifyJWT, security_1.getSecuritySettings);
+securityRouter.patch("/:userId/2fa", auth_1.verifyJWT, security_1.updateTwoFactorAuth);
+securityRouter.post("/:userId/api-keys", auth_1.verifyJWT, security_1.createApiKey);
+securityRouter.delete("/:userId/api-keys/:apiKeyId", auth_1.verifyJWT, security_1.deleteApiKey);
+securityRouter.delete("/:userId/sessions/:sessionId", auth_1.verifyJWT, security_1.revokeSession);
+exports.default = securityRouter;

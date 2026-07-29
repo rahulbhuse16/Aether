@@ -20,6 +20,9 @@ import slackChatReducer from './slices/slickChatSlice'
 import slackSyncReducer from './slices/slackSyncSlice'
 import calendarReducer from './slices/calndarSlice'
 import notionReducer from './slices/notionSlice'
+import securityReducer from './slices/securitySlice'
+import githubPermissionsReducer from './slices/githubPermissionsSlice'
+import incidentReducer from './slices/incidentSlice'
 
 
 export const store = configureStore({
@@ -44,7 +47,10 @@ export const store = configureStore({
     slackChat : slackChatReducer,
     aetherSlack : slackSyncReducer,
     calendar:calendarReducer,
-    notion:notionReducer
+    notion:notionReducer,
+    security: securityReducer,
+    githubPermissions: githubPermissionsReducer,
+    incidents: incidentReducer
   },
 });
 

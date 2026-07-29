@@ -39,14 +39,14 @@ const TaskSchema = new mongoose_1.Schema({
     id: { type: String, required: true, unique: true },
     title: { type: String, required: true },
     status: { type: String, enum: ["open", "in_progress", "done"], default: "open" },
-    source: { type: String, enum: ["github", "jira", "ai"], required: true },
+    source: { type: String, enum: ["github", "jira", "ai", "slack", "notion"], required: true },
     priority: { type: String, enum: ["high", "medium", "low"] },
     dueDate: { type: String },
     user: { type: mongoose_1.Schema.Types.ObjectId, ref: "User", required: true, index: true },
     githubIssueNumber: { type: Number },
     githubIssueUrl: { type: String },
     githubIssueId: { type: String },
-    project: { type: mongoose_1.Schema.Types.ObjectId, ref: "Project", required: true }
+    project: { type: mongoose_1.Schema.Types.ObjectId, ref: "Project", required: true },
 }, { timestamps: true });
 // Serialize exactly the fields the frontend Task type expects
 TaskSchema.methods.toJSON = function () {

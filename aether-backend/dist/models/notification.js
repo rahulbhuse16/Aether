@@ -14,6 +14,7 @@ var NotificationType;
     NotificationType["BILLING"] = "billing";
     NotificationType["AGENT"] = "agent";
     NotificationType["SYSTEM"] = "system";
+    NotificationType["SLACK"] = "slack";
 })(NotificationType || (exports.NotificationType = NotificationType = {}));
 var NotificationPriority;
 (function (NotificationPriority) {

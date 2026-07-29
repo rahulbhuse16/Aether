@@ -8,6 +8,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { FaGithub, FaJira, FaSlack, FaGoogle, FaRegStickyNote } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
 import { GlassCard } from "../components/ui/GlassCard";
 import { PageSection } from "../components/ui/PageSection";
@@ -17,7 +18,6 @@ import { setBudgetUsed } from "../store/slices/budgetSlice";
 import type { Integration } from "../store/types";
 import { API_BASE } from "../constants/constants";
 import { useEffect } from "react";
-import { loadUser } from "../services/auth";
 import { setIntegrationState } from "../store/slices/integrationsSlice";
 import { timeAgo } from "../utils/helper";
 import api from "../api/api";
@@ -32,6 +32,7 @@ const INTEGRATION_ICONS: Record<Integration["type"], React.ComponentType<{ class
 
 export default function Settings() {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const user = useAppSelector((s) => s.auth.user);
   const integrations = useAppSelector((s) => s.integrations.integrations);
   const budget = useAppSelector((s) => s.budget);
@@ -150,11 +151,11 @@ export default function Settings() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.04 * i }}
                   onClick={()=>{
-                    handleIntegration(i)
+                    handleIntegration(integration)
                   }}
                 >
                   <GlassCard onclick={()=>{
-                    handleIntegration(i)
+                    handleIntegration(integration)
                   }}  className="flex items-center justify-between py-4">
                     <div className="flex items-center gap-3">
                       <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03]">
@@ -233,9 +234,9 @@ export default function Settings() {
         <PageSection label="Preferences" delay={0.15}>
           <div className="space-y-2">
             {[
-              { icon: Bell, label: "Notifications", desc: "PR reviews, meeting summaries, AI alerts" },
-              { icon: Shield, label: "Security", desc: "Two-factor auth, API keys, session management" },
-              { icon: FaGithub, label: "GitHub permissions", desc: "Repo access, PR webhooks, commit analysis" },
+              { icon: Bell, label: "Notifications", desc: "PR reviews, meeting summaries, AI alerts", route: "/settings/notifications" },
+              { icon: Shield, label: "Security", desc: "Two-factor auth, API keys, session management", route: "/settings/security" },
+              { icon: FaGithub, label: "GitHub permissions", desc: "Repo access, PR webhooks, commit analysis", route: "/settings/github" },
             ].map((item) => (
               <GlassCard key={item.label} className="flex items-center justify-between py-4">
                 <div className="flex items-center gap-3">
@@ -245,7 +246,7 @@ export default function Settings() {
                     <p className="text-[12px] text-[#55575F]">{item.desc}</p>
                   </div>
                 </div>
-                <Button size="sm" variant="ghost">
+                <Button size="sm" variant="ghost" onClick={() => navigate(item.route)}>
                   Configure
                 </Button>
               </GlassCard>

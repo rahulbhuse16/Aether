@@ -17,7 +17,7 @@ const OAUTH_STATE_COOKIE = "oauth_state";
 const SALT_ROUNDS = 10;
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 function issueToken(userId) {
-    return jsonwebtoken_1.default.sign({ userId }, JWT_SECRET, { expiresIn: "2m" });
+    return jsonwebtoken_1.default.sign({ userId }, JWT_SECRET, { expiresIn: "24h" });
 }
 function setStateCookie(res, state) {
     res.cookie(OAUTH_STATE_COOKIE, state, {
@@ -246,7 +246,7 @@ const googleCallback = async (req, res) => {
         const { code, state } = req.query;
         const savedState = req.cookies?.[OAUTH_STATE_COOKIE];
         if (!code || !state || state !== savedState) {
-            res.redirect(`${FRONTEND_URL}/auth?error=oauth_state_mismatch`);
+            res.redirect(`${FRONTEND_URL}/oauth/callback?error=oauth_state_mismatch`);
             return;
         }
         res.clearCookie(OAUTH_STATE_COOKIE);
@@ -282,7 +282,7 @@ const googleCallback = async (req, res) => {
     }
     catch (err) {
         console.error("Google OAuth error:", err?.response?.data ?? err);
-        res.redirect(`${FRONTEND_URL}/auth?error=google_oauth_failed`);
+        res.redirect(`${FRONTEND_URL}/oauth/callback?error=${err?.message || 'google_oauth_failed'}`);
     }
 };
 exports.googleCallback = googleCallback;
@@ -373,7 +373,7 @@ const githubCallback = async (req, res) => {
     }
     catch (err) {
         console.error("GitHub OAuth error:", err?.response?.data ?? err);
-        res.redirect(`${FRONTEND_URL}/auth?error=github_oauth_failed`);
+        res.redirect(`${FRONTEND_URL}/oauth/callback?error=${err?.message ?? "github_oauth_failed"}`);
     }
 };
 exports.githubCallback = githubCallback;

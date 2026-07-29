@@ -64,6 +64,40 @@ export interface ActionItem {
   dueDate: string | null; // ISO date if the notes state one, else null
 }
 
+export interface IncidentAnalysisCommitHint {
+  sha: string;
+  message: string;
+  author?: string;
+  url?: string;
+}
+
+export interface IncidentAnalysisTimelineHint {
+  at?: string;
+  summary: string;
+  source?: string;
+}
+
+export interface IncidentAnalysisContext {
+  title: string;
+  description: string;
+  errorDescription?: string;
+  recentCommits?: IncidentAnalysisCommitHint[];
+  deploymentsOrEvents?: string[];
+  affectedServicesOrFiles?: string[];
+  timeline?: IncidentAnalysisTimelineHint[];
+  project?: ProjectContext;
+}
+
+export interface IncidentAnalysisResult {
+  rootCause: string;
+  confidence: number;
+  evidence: string[];
+  affectedComponents: string[];
+  timeline: IncidentAnalysisTimelineHint[];
+  recommendedActions: string[];
+  severity: "low" | "medium" | "high" | "critical";
+}
+
 /**
  * Optional project context injected into every AI call when available.
  * This grounds Aether's responses in the user's actual codebase rather
@@ -472,5 +506,48 @@ Respond ONLY with a JSON object, no prose, no markdown fences, matching exactly:
 }`;
 
     return completeJson<{ items: ActionItem[] }>(system, notesContent);
+  },
+
+  /**
+   * Production incident analysis — structured root-cause and remediation
+   * from error context, commits, deployments, and timeline.
+   */
+  analyzeIncident: async (
+    context: IncidentAnalysisContext
+  ): Promise<IncidentAnalysisResult> => {
+    const projectCtx = context.project
+      ? buildProjectContextBlock([context.project])
+      : "";
+
+    const system = `You are Aether Incident Commander, an SRE-focused AI that analyzes production incidents.
+You will receive structured incident context (description, errors, recent commits, deployments/events, affected services/files, timeline).
+
+## Rules
+1. Base root cause and evidence ONLY on the provided context — do not invent commits, deploys, or services not mentioned.
+2. If context is thin, state the best hypothesis and lower confidence accordingly.
+3. recommendedActions must be concrete, ordered by urgency (rollback, mitigate, fix, follow-up).
+4. timeline in your response should reconstruct key incident moments from the input (use ISO8601 "at" when inferable, else omit "at").
+5. severity must reflect blast radius and user impact described in the context.
+
+## Confidence (0–100)
+- 80–100: clear error + commits/events point to one cause
+- 50–79: likely cause with some ambiguity
+- 20–49: limited signals
+- 0–19: insufficient data for a reliable diagnosis
+${projectCtx}
+
+Respond ONLY with a JSON object, no prose, no markdown fences, matching exactly:
+{
+  "rootCause": string,
+  "confidence": number,
+  "evidence": string[],
+  "affectedComponents": string[],
+  "timeline": [{ "at": string (optional ISO8601), "summary": string, "source": string (optional) }],
+  "recommendedActions": string[],
+  "severity": "low" | "medium" | "high" | "critical"
+}`;
+
+    const { project: _project, ...payload } = context;
+    return completeJson<IncidentAnalysisResult>(system, JSON.stringify(payload));
   },
 };

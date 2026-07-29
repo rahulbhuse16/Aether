@@ -21,6 +21,11 @@ import taskRouter from "./router/task-planner";
 import calendarRouter from "./router/calendar";
 import slackRouter from "./router/slack";
 import notionRouter from "./router/notion";
+import securityRouter from "./router/security";
+import githubPermissionsRouter from "./router/github-permissions";
+import incidentRouter from "./router/incident-commander";
+import oauthRoutes from "./router/oauth";
+import cloudinaryRouter from "./router/cloudinary";
 
 const app = express();
 
@@ -63,10 +68,14 @@ app.use("/api/v1/notifications", notificationsRouter);
 app.use("/api/v1/meetings", meetingAgentRouter);
 app.use("/api/v1/email", emailRouter);
 app.use("/api/v1/task-planner", taskRouter);
-app.use("/api/v1/calendar",calendarRouter)
-app.use('/api/v1/slack',slackRouter)
-app.use('/api/v1/notion',notionRouter)
-
+app.use("/api/v1/calendar", calendarRouter)
+app.use('/api/v1/slack', slackRouter)
+app.use('/api/v1/notion', notionRouter)
+app.use('/api/v1/security', securityRouter)
+app.use('/api/v1/github-permissions', githubPermissionsRouter)
+app.use('/api/v1/incidents', incidentRouter)
+app.use('/api/v1', oauthRoutes)
+app.use('/api/v1/cloudinary', cloudinaryRouter)
 connectDB();
 
 app.listen(5000, () => {
