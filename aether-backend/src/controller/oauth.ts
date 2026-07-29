@@ -40,6 +40,8 @@ import {
 import { ENV } from "../config/env";
 import security from "../models/security";
 import { User } from "../models/user";
+import { saveNotification } from "../utils/notifications";
+import { NotificationPriority, NotificationType } from "../models/notification";
 
 const { FRONTEND_URL } = ENV;
 
@@ -239,10 +241,10 @@ export async function authorize(req: Request, res: Response) {
     /**
      * Check existing consent
      */
-    
 
 
-   
+
+
 
 
 
@@ -251,6 +253,16 @@ export async function authorize(req: Request, res: Response) {
      */
     const requestId =
       generateRequestId();
+
+
+
+    await saveNotification({
+      userId: currentUser._id,
+      type: NotificationType.SECURITY,
+      priority: NotificationPriority.HIGH,
+      title: `${client.name} connected to your account`,
+      description: `${client.name} was granted access to your Aether account with the following permissions: ${requestedScopes.join(", ")}. If you didn't authorize this connection, revoke its access immediately.`,
+    });
 
 
     await OAuthSession.create({
@@ -270,7 +282,7 @@ export async function authorize(req: Request, res: Response) {
           ? state
           : undefined,
 
-      approved:false,
+      approved: false,
 
       expiresAt:
         new Date(
@@ -286,7 +298,7 @@ export async function authorize(req: Request, res: Response) {
     );
 
 
-  } catch(error) {
+  } catch (error) {
 
     console.error(
       "[oauth.authorize]",
@@ -295,8 +307,8 @@ export async function authorize(req: Request, res: Response) {
 
 
     return res.status(500).json({
-      success:false,
-      message:"Failed to start authorization",
+      success: false,
+      message: "Failed to start authorization",
     });
 
   }
@@ -306,7 +318,7 @@ export async function authorize(req: Request, res: Response) {
 export async function getConsent(req: Request, res: Response) {
   try {
     const currentUser = (req as any).user;
-      console.log("getConsent",currentUser)
+    console.log("getConsent", currentUser)
 
     if (!currentUser) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -577,7 +589,7 @@ async function issueTokenPair(args: { userId: string; clientId: string; scopes: 
 export async function registerOAuthClient(req: Request, res: Response) {
   try {
     const currentUser = (req as any).user;
-    console.log("currentUser",currentUser)
+    console.log("currentUser", currentUser)
     if (!currentUser) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
