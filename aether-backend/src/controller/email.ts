@@ -18,6 +18,7 @@ export const sendTestEmail = async (
     }
 
     const transporter = nodemailer.createTransport({
+      //@ts-ignore
       host: ENV.SMTP_HOST,
       port: Number(ENV.SMTP_PORT),
       secure: Number(ENV.SMTP_PORT) === 465,
@@ -25,6 +26,7 @@ export const sendTestEmail = async (
         user: ENV.SMTP_USER,
         pass: ENV.SMTP_PASS,
       },
+      family :4
     });
 
     const html = `
