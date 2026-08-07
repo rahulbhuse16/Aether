@@ -34,6 +34,7 @@ import {
   Link2,
   Bot,
   CheckCircle2,
+  ChevronRight,
 } from "lucide-react";
 import { FaGithub } from "react-icons/fa";
 import { Logo } from "../components/Logo";
@@ -100,7 +101,6 @@ const NAV_LINKS = [
   { label: "Agents", href: "#agents" },
   { label: "How it works", href: "#how-it-works" },
   { label: "Pricing", href: "pricing" },
-  { label: "Docs", href: "#" },
 ];
 
 function Navbar() {
@@ -127,13 +127,7 @@ function Navbar() {
         </nav>
 
         <div className="hidden items-center gap-5 md:flex">
-          <a
-            href="#"
-            className="flex items-center gap-1.5 text-[14px] text-[#94969E] transition-colors hover:text-[#F4F3EF]"
-          >
-            <FaGithub className="h-4 w-4" />
-            GitHub
-          </a>
+          
           <a
             href="/auth"
             className="text-[14px] text-[#94969E] transition-colors hover:text-[#F4F3EF]"
@@ -141,11 +135,11 @@ function Navbar() {
             Sign in
           </a>
           <a
-            href="/onboarding"
-            className="group flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-[#8B7FE8] to-[#22A67D] px-4 py-2 text-[13px] font-medium text-[#0A0B0D] transition-all hover:brightness-[1.05]"
+            href="/live-workflow"
+            className="group text-white flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-[#8B7FE8] to-[#22A67D] px-4 py-2 text-[13px] font-medium text-[#0A0B0D] transition-all hover:brightness-[1.05]"
           >
-            Get started
-            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+            How It Works
+            <ChevronRight color="#fff" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
           </a>
         </div>
 
@@ -252,13 +246,7 @@ function HeroSection() {
         transition={{ duration: 0.5, delay: 0.3 }}
         className="mt-9 flex flex-col items-center gap-3 sm:flex-row"
       >
-        <a
-          href="/signup"
-          className="group flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#8B7FE8] to-[#22A67D] px-6 py-3 text-[14px] font-medium text-[#0A0B0D] shadow-lg shadow-[#8B7FE8]/10 transition-all hover:brightness-[1.05]"
-        >
-          Start building — it's free
-          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-        </a>
+        
         <a
           href="#agents"
           className="flex items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.02] px-6 py-3 text-[14px] font-medium text-[#F4F3EF] transition-colors hover:bg-white/[0.05]"
@@ -562,7 +550,7 @@ export default function Hero() {
         <HeroSection />
         <AgentsSection />
         <HowItWorksSection />
-        <CTASection />
+        {/* <CTASection /> */}
       </main>
       
     </div>

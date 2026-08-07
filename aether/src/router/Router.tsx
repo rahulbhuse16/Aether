@@ -31,6 +31,7 @@ import GitHubPermissions from "../pages/GitHubPermissions";
 import Incidents from "../pages/Incident";
 import Consent from "../pages/Consent";
 import OAuthClients from "../pages/OAuthClients";
+import LiveWalkthroughPage from "../pages/LiveWalkthroughPage";
 
 const Router = () => {
   return (
@@ -39,6 +40,8 @@ const Router = () => {
         <Route path="*" element={<NotFoundPage />} />
         <Route path="/oauth/callback" element={<OAuthCallback />} />
         <Route path="/oauth/consent/:requestId" element={<Consent />} />
+        <Route path="/live-workflow" element={<LiveWalkthroughPage />} />
+
 
 
         <Route element={<PublicRoute />}>
