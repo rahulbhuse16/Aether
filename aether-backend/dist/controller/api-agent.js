@@ -15,7 +15,7 @@
  *
  * Env vars:
  *   GROQ_API_KEY   - required
- *   GROQ_MODEL     - optional, defaults to "llama-3.3-70b-versatile"
+ *   GROQ_MODEL     - optional, defaults to "openai/gpt-oss-120b"
  *                    (check https://console.groq.com/docs/models for the
  *                    current list of available models before deploying —
  *                    Groq's supported model lineup changes over time)
@@ -100,7 +100,7 @@ exports.ApiAgentSession = mongoose_1.default.models.ApiAgentSession ||
 /*  Groq client                                                        */
 /* ------------------------------------------------------------------ */
 const groq = new groq_sdk_1.default({ apiKey: env_1.ENV.GROQ_API_KEY });
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_MODEL = "openai/gpt-oss-120b";
 /* ------------------------------------------------------------------ */
 /*  System instruction                                                 */
 /* ------------------------------------------------------------------ */

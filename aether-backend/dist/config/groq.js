@@ -15,4 +15,4 @@ exports.groq = new groq_sdk_1.default({ apiKey: env_1.ENV.GROQ_API_KEY });
 // through files to bump it later. Llama 3.3 70B is a solid default on
 // Groq for structured-JSON tasks like this at low latency/cost; swap
 // for a bigger model here if digest quality needs to go up.
-exports.GROQ_MODEL = "llama-3.3-70b-versatile";
+exports.GROQ_MODEL = "openai/gpt-oss-120b";

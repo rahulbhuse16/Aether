@@ -6,7 +6,7 @@ import { DocsSession, IGeneratedDoc, GeneratedDocType } from "../models/document
 import { ENV } from "../config/env";
 
 const groq = new Groq({ apiKey: ENV.GROQ_API_KEY });
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 const GITHUB_API = "https://api.github.com";
 
 // -----------------------------------------------------------------------------
@@ -46,7 +46,7 @@ interface LLMOutput {
 
 // -----------------------------------------------------------------------------
 // Config — token budgets are conservative on purpose: this Groq tier caps
-// llama-3.3-70b-versatile at a small TPM (tokens/minute) allowance, and a
+// openai/gpt-oss-120b at a small TPM (tokens/minute) allowance, and a
 // generation call here produces up to 4 full documents, so both the input
 // context AND the completion budget need headroom left for each other.
 // -----------------------------------------------------------------------------

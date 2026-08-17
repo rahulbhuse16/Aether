@@ -6,7 +6,7 @@ import { User } from "../models/user";
 import axios from "axios";
 
 const groq = new Groq({ apiKey: ENV.GROQ_API_KEY });
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_MODEL = "openai/gpt-oss-120b";
 
 interface LLMFinding {
   line: number;
@@ -31,7 +31,7 @@ interface GithubPRFile {
 // -----------------------------------------------------------------------------
 // Token-budget guardrails
 // -----------------------------------------------------------------------------
-// Groq's on_demand tier caps llama-3.3-70b-versatile at a fixed number of
+// Groq's on_demand tier caps openai/gpt-oss-120b at a fixed number of
 // tokens PER DAY (TPD), not just per minute. A single unreviewed PR with a
 // few large diffs can burn a large chunk of that daily budget in one call.
 // These caps keep each request small and predictable; raise them via env

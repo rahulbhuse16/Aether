@@ -289,7 +289,7 @@ async function processMention(event, teamId) {
  */
 const { GROQ_API_KEY } = env_1.ENV;
 const groq = new groq_sdk_1.default({ apiKey: GROQ_API_KEY });
-const MODEL = "llama-3.3-70b-versatile";
+const MODEL = "openai/gpt-oss-120b";
 const HISTORY_LOOKBACK_DAYS = 7;
 const MAX_MESSAGES_PER_CHANNEL = 200;
 async function extractJson(system, transcript) {

@@ -6,7 +6,7 @@ import { DeploymentSession, IDeploymentArtifact, DeploymentArtifactType } from "
 import { ENV } from "../config/env";
 
 const groq = new Groq({ apiKey: ENV.GROQ_API_KEY });
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_MODEL = "openai/gpt-oss-120b";
 const GITHUB_API = "https://api.github.com";
 
 // -----------------------------------------------------------------------------

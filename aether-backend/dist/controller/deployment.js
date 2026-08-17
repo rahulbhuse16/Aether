@@ -12,7 +12,7 @@ const user_1 = require("../models/user"); // adjust path to your actual User mod
 const deployment_1 = require("../models/deployment");
 const env_1 = require("../config/env");
 const groq = new groq_sdk_1.default({ apiKey: env_1.ENV.GROQ_API_KEY });
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_MODEL = "openai/gpt-oss-120b";
 const GITHUB_API = "https://api.github.com";
 // -----------------------------------------------------------------------------
 // Config

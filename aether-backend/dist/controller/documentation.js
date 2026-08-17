@@ -12,11 +12,11 @@ const user_1 = require("../models/user"); // adjust path to your actual User mod
 const documentation_1 = require("../models/documentation");
 const env_1 = require("../config/env");
 const groq = new groq_sdk_1.default({ apiKey: env_1.ENV.GROQ_API_KEY });
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 const GITHUB_API = "https://api.github.com";
 // -----------------------------------------------------------------------------
 // Config — token budgets are conservative on purpose: this Groq tier caps
-// llama-3.3-70b-versatile at a small TPM (tokens/minute) allowance, and a
+// openai/gpt-oss-120b at a small TPM (tokens/minute) allowance, and a
 // generation call here produces up to 4 full documents, so both the input
 // context AND the completion budget need headroom left for each other.
 // -----------------------------------------------------------------------------

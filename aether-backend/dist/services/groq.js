@@ -10,7 +10,7 @@ const { GROQ_API_KEY } = env_1.ENV;
 const groq = new groq_sdk_1.default({ apiKey: GROQ_API_KEY });
 // Llama 3.3 70B on Groq: strong enough reasoning for code/issue analysis,
 // fast enough to reply inside a live Slack thread within a few seconds.
-const MODEL = "llama-3.3-70b-versatile";
+const MODEL = "openai/gpt-oss-120b";
 function buildProjectContextBlock(projects) {
     if (!projects || projects.length === 0)
         return "";

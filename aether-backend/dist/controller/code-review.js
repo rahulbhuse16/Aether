@@ -10,11 +10,11 @@ const project_1 = require("../models/project");
 const user_1 = require("../models/user");
 const axios_1 = __importDefault(require("axios"));
 const groq = new groq_sdk_1.default({ apiKey: env_1.ENV.GROQ_API_KEY });
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_MODEL = "openai/gpt-oss-120b";
 // -----------------------------------------------------------------------------
 // Token-budget guardrails
 // -----------------------------------------------------------------------------
-// Groq's on_demand tier caps llama-3.3-70b-versatile at a fixed number of
+// Groq's on_demand tier caps openai/gpt-oss-120b at a fixed number of
 // tokens PER DAY (TPD), not just per minute. A single unreviewed PR with a
 // few large diffs can burn a large chunk of that daily budget in one call.
 // These caps keep each request small and predictable; raise them via env

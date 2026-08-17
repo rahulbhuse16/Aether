@@ -15,11 +15,11 @@ const env_1 = require("../config/env");
 // -----------------------------------------------------------------------------
 // Config
 // -----------------------------------------------------------------------------
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 const GITHUB_API = "https://api.github.com";
 // Guardrails so we never blow the model's context window.
 // NOTE: these defaults are sized for Groq's free "on_demand" tier, which as of
-// writing caps llama-3.3-70b-versatile at 12,000 tokens/minute (prompt +
+// writing caps openai/gpt-oss-120b at 12,000 tokens/minute (prompt +
 // completion combined). ~4 characters ≈ 1 token for English/code text, so
 // keep (system prompt + file context + completion budget) comfortably under
 // that. If you're on Dev Tier or a higher tier, raise these via env vars.

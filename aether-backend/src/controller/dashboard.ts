@@ -37,10 +37,14 @@
 
 import type { Response, Request } from "express";
 import Groq from "groq-sdk";
+import { ENV } from "../config/env";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const groq = new Groq({ apiKey: ENV.GROQ_API_KEY });
+const GROQ_MODEL = "openai/gpt-oss-120b";
 const GITHUB_API = "https://api.github.com";
+
+console.log(ENV.GROQ_API_KEY)
+
 
 export interface Task {
   id: string;

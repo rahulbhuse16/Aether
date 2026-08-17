@@ -49,7 +49,7 @@ const groq = new groq_sdk_1.default({ apiKey: env_1.ENV.GROQ_API_KEY });
 // the reasoning/summarization pass. Keep these two concerns on separate
 // calls: transcription must stay verbatim, summarization must stay creative.
 const GROQ_TRANSCRIBE_MODEL = "whisper-large-v3";
-const GROQ_CHAT_MODEL = "llama-3.3-70b-versatile";
+const GROQ_CHAT_MODEL = "openai/gpt-oss-120b";
 // -----------------------------------------------------------------------------
 // Config
 // -----------------------------------------------------------------------------

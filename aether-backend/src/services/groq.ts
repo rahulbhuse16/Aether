@@ -7,7 +7,7 @@ const groq = new Groq({ apiKey: GROQ_API_KEY });
 
 // Llama 3.3 70B on Groq: strong enough reasoning for code/issue analysis,
 // fast enough to reply inside a live Slack thread within a few seconds.
-const MODEL = "llama-3.3-70b-versatile";
+const MODEL = "openai/gpt-oss-120b";
 
 export type MentionIntent =
   | "analyze_issue"
