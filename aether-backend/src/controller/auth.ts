@@ -7,6 +7,7 @@ import { User } from "../models/user";
 import { sendWelcomeMail, sendResetPasswordMail } from "../utils/send-email";
 import { ENV } from "../config/env";
 import { connectGithubAccount } from "../services/github-connect";
+import { createOidcState, setOidcCookie, buildAuthorizationUrl, verifyIdToken, getUserInfo, exchangeCode } from "../services/oidc-service";
 
 const {
   GOOGLE_CLIENT_ID,
@@ -81,6 +82,13 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
     await sendWelcomeMail(email);
 
     const token = issueToken(user._id.toString());
+
+    res.cookie('authToken',token,{
+      httpOnly:true,
+      secure:true,
+      maxAge:15*60
+
+    })
 
     res.status(201).json({
       success: true,
@@ -456,5 +464,346 @@ export const githubCallback = async (req: Request, res: Response): Promise<void>
   } catch (err: any) {
     console.error("GitHub OAuth error:", err?.response?.data ?? err);
     res.redirect(`${FRONTEND_URL}/oauth/callback?error=${err?.message ?? "github_oauth_failed"}`);
+  }
+};
+
+const OIDC_STATE_COOKIE = "oidc_state";
+const OIDC_NONCE_COOKIE = "oidc_nonce";
+const OIDC_VERIFIER_COOKIE = "oidc_code_verifier";
+
+export const loginOidc = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const oidcState = createOidcState();
+
+    console.log("OIDC STATE CREATED");
+    console.log("state:", oidcState.state);
+    console.log("nonce:", oidcState.nonce);
+    console.log("codeVerifier length:", oidcState.codeVerifier.length);
+
+    setOidcCookie(
+      res,
+      OIDC_STATE_COOKIE,
+      oidcState.state
+    );
+
+    setOidcCookie(
+      res,
+      OIDC_NONCE_COOKIE,
+      oidcState.nonce
+    );
+
+    setOidcCookie(
+      res,
+      OIDC_VERIFIER_COOKIE,
+      oidcState.codeVerifier
+    );
+
+    const authorizationUrl =
+      await buildAuthorizationUrl(oidcState);
+
+    console.log("OIDC AUTHORIZATION URL:");
+    console.log(authorizationUrl);
+
+    res.redirect(authorizationUrl);
+
+  } catch (error: any) {
+    console.error(
+      "OIDC login error:",
+      error?.response?.data ?? error
+    );
+
+    res.redirect(
+      `${FRONTEND_URL}/auth?error=oidc_login_failed`
+    );
+  }
+};
+
+function clearOidcCookies(res: Response) {
+  res.clearCookie(OIDC_STATE_COOKIE, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  });
+
+  res.clearCookie(OIDC_NONCE_COOKIE, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  });
+
+  res.clearCookie(OIDC_VERIFIER_COOKIE, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  });
+}
+
+
+export const oidcCallback = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const {
+      code,
+      state,
+      error,
+      error_description,
+    } = req.query as {
+      code?: string;
+      state?: string;
+      error?: string;
+      error_description?: string;
+    };
+
+    /*
+     * Keycloak may redirect with an OAuth error.
+     */
+    if (error) {
+      console.error(
+        "OIDC provider error:",
+        error,
+        error_description
+      );
+
+      clearOidcCookies(res);
+
+      res.redirect(
+        `${FRONTEND_URL}/oauth/callback?error=${encodeURIComponent(
+          error
+        )}`
+      );
+
+      return;
+    }
+
+    /*
+     * Read values generated during /login.
+     */
+    const savedState =
+      req.cookies?.[OIDC_STATE_COOKIE];
+
+    const savedNonce =
+      req.cookies?.[OIDC_NONCE_COOKIE];
+
+    const savedCodeVerifier =
+      req.cookies?.[OIDC_VERIFIER_COOKIE];
+
+    /*
+     * Validate required values.
+     */
+    if (
+      !code ||
+      !state ||
+      !savedState ||
+      !savedNonce ||
+      !savedCodeVerifier
+    ) {
+      clearOidcCookies(res);
+
+      res.redirect(
+        `${FRONTEND_URL}/oauth/callback?error=oidc_missing_parameters`
+      );
+
+      return;
+    }
+
+    /*
+     * Validate OAuth state.
+     */
+    if (state !== savedState) {
+      clearOidcCookies(res);
+
+      res.redirect(
+        `${FRONTEND_URL}/oauth/callback?error=oidc_state_mismatch`
+      );
+
+      return;
+    }
+
+    /*
+     * State has now been consumed.
+     */
+    clearOidcCookies(res);
+
+    /*
+     * Exchange authorization code for tokens.
+     */
+    const tokenData = await exchangeCode(
+      code,
+      savedCodeVerifier
+    );
+
+    if (!tokenData.id_token) {
+      throw new Error(
+        "OIDC provider did not return an ID token"
+      );
+    }
+
+    /*
+     * Validate ID token:
+     *
+     * signature
+     * issuer
+     * audience
+     * expiry
+     * nonce
+     */
+    const idToken = await verifyIdToken(
+      tokenData.id_token,
+      savedNonce
+    );
+
+    /*
+     * Fetch additional profile information.
+     */
+    let profile: any = {};
+
+    if (tokenData.access_token) {
+      try {
+        profile = await getUserInfo(
+          tokenData.access_token
+        );
+      } catch (error) {
+        console.warn(
+          "OIDC UserInfo request failed:",
+          error
+        );
+      }
+    }
+
+    /*
+     * Prefer verified ID token identity.
+     */
+    const subject = String(idToken.sub);
+
+    const email =
+      typeof idToken.email === "string"
+        ? idToken.email
+        : profile.email;
+
+    const name =
+      typeof idToken.name === "string"
+        ? idToken.name
+        : profile.name ??
+          profile.preferred_username ??
+          email;
+
+    const picture =
+      typeof idToken.picture === "string"
+        ? idToken.picture
+        : profile.picture;
+
+    /*
+     * Find existing Aether user.
+     *
+     * IMPORTANT:
+     *
+     * OIDC identity should use issuer + subject.
+     */
+    let user = await User.findOne({
+      oidcIssuer: process.env.OIDC_ISSUER,
+      oidcSubject: subject,
+    });
+
+    /*
+     * Optional account linking by verified email.
+     */
+    if (!user && email) {
+      user = await User.findOne({
+        email: email.toLowerCase(),
+      });
+    }
+
+    /*
+     * Create user if necessary.
+     */
+    if (!user) {
+      user = await User.create({
+        email: email?.toLowerCase(),
+
+        fullName: name,
+
+        profileImage: picture,
+
+        provider: "oidc",
+
+        oidcIssuer: process.env.OIDC_ISSUER,
+
+        oidcSubject: subject,
+      });
+
+      if (email) {
+        await sendWelcomeMail(email);
+      }
+    } else {
+      /*
+       * Link OIDC identity to existing user.
+       */
+      user.oidcIssuer =
+        user.oidcIssuer ??
+        process.env.OIDC_ISSUER;
+
+      user.oidcSubject =
+        user.oidcSubject ??
+        subject;
+
+      user.fullName =
+        user.fullName ??
+        name;
+
+      user.profileImage =
+        picture ??
+        user.profileImage;
+
+      await user.save();
+    }
+
+    /*
+     * Create Aether's own application JWT.
+     *
+     * Keycloak token is NOT used as Aether's
+     * application authentication token.
+     */
+    const token = issueToken(
+      user._id.toString()
+    );
+
+    /*
+     * Store application JWT in HttpOnly cookie.
+     */
+    res.cookie("authToken", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000,
+      path: "/",
+    });
+
+    /*
+     * Never put the JWT in the URL.
+     */
+    res.redirect(
+      `${FRONTEND_URL}/oauth/callback?token=${token}&userId=${user._id}&success=oidc`
+    );
+  } catch (error: any) {
+    console.error(
+      "OIDC callback error:",
+      error?.response?.data ?? error
+    );
+
+    clearOidcCookies(res);
+
+    res.redirect(
+      `${FRONTEND_URL}/oauth/callback?error=${encodeURIComponent(
+        error?.message ?? "oidc_authentication_failed"
+      )}`
+    );
   }
 };

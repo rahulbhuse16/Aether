@@ -11,10 +11,14 @@ export interface IUser extends Document {
   resetPasswordExpire?: Date;
 
   // Provider tracking
-  provider: "local" | "google" | "github";
+  provider: "local" | "google" | "github" | "oidc";
 
   // Google
   googleId?: string;
+
+  // OpenID Connect
+  oidcIssuer?: string;
+  oidcSubject?: string;
 
   // GitHub
   githubConnected: boolean;
@@ -33,8 +37,7 @@ export interface IUser extends Document {
     appId: string;
     connected: boolean;
     lastSyncAt: Date;
-
-  },
+  };
 
   googleCalendar: {
     accessToken: string;
@@ -44,8 +47,9 @@ export interface IUser extends Document {
     channelId?: string;
     resourceId?: string;
     expiration?: string;
-    lastSyncAt: Date
-  },
+    lastSyncAt: Date;
+  };
+
   notion: {
     accessToken: string;
     botId: string;
@@ -59,10 +63,9 @@ export interface IUser extends Document {
 
   createdAt: Date;
   updatedAt: Date;
-
 }
 
-const UserSchema = new Schema<IUser>(
+const UserSchema = new Schema(
   {
     email: {
       type: String,
@@ -99,15 +102,18 @@ const UserSchema = new Schema<IUser>(
       type: Date,
     },
 
+    // -----------------------------
+    // Provider tracking
+    // -----------------------------
     provider: {
       type: String,
-      enum: ["local", "google", "github"],
+      enum: ["local", "google", "github", "oidc"],
       required: true,
       default: "local",
     },
 
     // -----------------------------
-    // Google Integration
+    // Google
     // -----------------------------
     googleId: {
       type: String,
@@ -116,7 +122,20 @@ const UserSchema = new Schema<IUser>(
     },
 
     // -----------------------------
-    // GitHub Integration
+    // OpenID Connect
+    // -----------------------------
+    oidcIssuer: {
+      type: String,
+      index: true,
+    },
+
+    oidcSubject: {
+      type: String,
+      index: true,
+    },
+
+    // -----------------------------
+    // GitHub
     // -----------------------------
     githubConnected: {
       type: Boolean,
@@ -139,6 +158,18 @@ const UserSchema = new Schema<IUser>(
       default: "",
     },
 
+    githubAccessToken: {
+      type: String,
+      default: "",
+    },
+
+    githubLastSyncAt: {
+      type: Date,
+    },
+
+    // -----------------------------
+    // Slack
+    // -----------------------------
     slack: {
       accessToken: {
         type: String,
@@ -173,6 +204,10 @@ const UserSchema = new Schema<IUser>(
         type: Date,
       },
     },
+
+    // -----------------------------
+    // Notion
+    // -----------------------------
     notion: {
       accessToken: {
         type: String,
@@ -208,6 +243,9 @@ const UserSchema = new Schema<IUser>(
       },
     },
 
+    // -----------------------------
+    // Google Calendar
+    // -----------------------------
     googleCalendar: {
       accessToken: {
         type: String,
@@ -237,22 +275,26 @@ const UserSchema = new Schema<IUser>(
       expiration: {
         type: String,
       },
+
       lastSyncAt: {
         type: Date,
       },
     },
-
-    githubAccessToken: {
-      type: String,
-      default: "",
-    },
-    githubLastSyncAt: {
-      type: Date,
-    },
   },
-
   {
     timestamps: true,
+  }
+);
+
+// OIDC identity = issuer + subject
+UserSchema.index(
+  {
+    oidcIssuer: 1,
+    oidcSubject: 1,
+  },
+  {
+    unique: true,
+    sparse: true,
   }
 );
 

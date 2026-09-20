@@ -34,7 +34,7 @@ import {
 
 } from "lucide-react";
 import { FaGithub, FaGoogle } from "react-icons/fa";
-import { loginWithEmail, loginWithGithub, loginWithGoogle, resetPassword, signUpWithEmail } from "../services/auth";
+import { loginWithEmail, loginWithGithub, loginWithGoogle, loginWithSSO, resetPassword, signUpWithEmail } from "../services/auth";
 import { useNavigate } from "react-router";
 
 type Mode = "signin" | "signup";
@@ -245,6 +245,10 @@ export default function AuthPage() {
         }
     }
 
+    const handleSSoLogin=()=>{
+        loginWithSSO()
+    }
+
     
 
     return (
@@ -352,6 +356,16 @@ export default function AuthPage() {
                                 </span>
                                 <span className="h-px flex-1 bg-white/[0.08]" />
                             </div>
+
+                             <button
+                                type="button"
+                                onClick={handleSSoLogin}
+                                className="cursor-pointer mb-5 flex w-full items-center justify-center gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] py-2.5 text-sm font-medium text-[#F4F3EF] transition-all hover:border-white/[0.16] hover:bg-white/[0.05] disabled:opacity-60"
+                            >
+
+                                Login With SSO
+        
+                            </button>
 
                             <AnimatePresence mode="wait">
                                 <motion.form

@@ -17,6 +17,10 @@ export const loginWithGithub = (): void => {
   window.location.href = `${API_BASE}/auth/github?source=auth`;
 };
 
+export const loginWithSSO = (): void => {
+  window.location.href = `${API_BASE}/auth/oidc/login`;
+};
+
 /* ------------------------------------------------------------------ */
 /* Email & Password — own backend                                      */
 /* ------------------------------------------------------------------ */
