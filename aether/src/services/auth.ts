@@ -123,6 +123,23 @@ export const loadUser = async () => {
 };
 
 export const logOut = async () => {
-  localStorage.clear();
-  toast.success("Logged out successfully")
-};
+  try {
+    const response = await axios.post(
+      `${API_BASE}/auth/logout`,
+      {},
+      
+    );
+
+    localStorage.clear();
+
+    toast.success("Logged out successfully");
+
+    window.location.href = response.data.logoutUrl;
+  } catch (error) {
+    console.error("Logout failed:", error);
+
+    localStorage.clear();
+
+    toast.error("Logout failed");
+  }
+}

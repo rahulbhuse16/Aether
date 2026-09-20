@@ -7,7 +7,7 @@
 //     return <AppShell title="Dashboard"><DashboardContent /></AppShell>;
 //   }
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -28,6 +28,7 @@ import {
   Rocket,
   AudioLines,
   Plus,
+  User,
 } from "lucide-react";
 import { FaCalendarAlt } from "react-icons/fa";
 
@@ -199,6 +200,27 @@ export function AppShell({
 
 
   }
+
+
+  const [showUserMenu, setShowUserMenu] = useState(false);
+const userMenuRef = useRef<HTMLDivElement>(null);
+
+useEffect(() => {
+  const handleClickOutside = (event: MouseEvent) => {
+    if (
+      userMenuRef.current &&
+      !userMenuRef.current.contains(event.target as Node)
+    ) {
+      setShowUserMenu(false);
+    }
+  };
+
+  document.addEventListener("mousedown", handleClickOutside);
+
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, []);
 
 
   useSSENotification()
@@ -427,21 +449,70 @@ export function AppShell({
           </h1>
 
           <div className="flex items-center gap-4">
-            <div className="hidden items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 sm:flex">
-              <span className="font-mono text-[11px] text-[#55575F]">AI budget</span>
-              <div className="h-1.5 w-16 overflow-hidden rounded-full bg-white/[0.08]">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#8B7FE8] to-[#22A67D]"
-                  style={{ width: `${budget.used}%` }}
-                />
-              </div>
-              <span className="font-mono text-[11px] text-[#94969E]">{budget.used}%</span>
-            </div>
+            <div className="flex items-center gap-4">
+
+  {/* Notifications */}
+  <Notifications />
+
+  {/* User Menu */}
+  <div className="relative" ref={userMenuRef}>
+
+    <button
+      onClick={() => setShowUserMenu((prev) => !prev)}
+      className="flex h-6 w-6 items-center justify-center rounded-full
+                 border border-gray-200 bg-white text-gray-600
+                 transition hover:bg-gray-50 hover:text-gray-900
+                 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300
+                 dark:hover:bg-gray-700"
+      aria-label="User menu"
+    >
+      <User size={20} />
+    </button>
+
+    {showUserMenu && (
+      <div
+        className="absolute right-0 top-12 z-50 w-56
+                   rounded-xl border border-gray-200 bg-white
+                   p-2 shadow-xl
+                   dark:border-gray-700 dark:bg-gray-800"
+      >
+
+        {/* User Info */}
+        <div className="border-b border-gray-100 px-3 py-3 dark:border-gray-700">
+          <p className="text-sm font-semibold text-gray-900 dark:text-white">
+            {user?.name}
+          </p>
+
+         
+        </div>
+
+        {/* Logout */}
+        <button
+          onClick={() => {
+            setShowUserMenu(false);
+            logOut();
+          }}
+          className="mt-1 flex w-full items-center gap-3 rounded-lg
+                     px-3 py-2.5 text-sm font-medium
+                     text-red-600 transition
+                     hover:bg-red-50
+                     dark:text-red-400 dark:hover:bg-red-950/30"
+        >
+          <LogOut size={18} />
+          <span>Logout</span>
+        </button>
+
+      </div>
+    )}
+  </div>
+
+</div>
+           
 
             {/* Self-contained: renders its own bell + unread badge + panel,
                 reads/writes notificationsSlice internally. Don't wrap it
                 in extra open/close state here — it manages that itself. */}
-            <Notifications />
+           
           </div>
         </header>
 

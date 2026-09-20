@@ -18,6 +18,8 @@ const {
   GITHUB_REDIRECT_URI,
   FRONTEND_URL,
   JWT_SECRET,
+  OIDC_ISSUER,
+  OIDC_CLIENT_ID
 } = ENV;
 
 const OAUTH_STATE_COOKIE = "oauth_state";
@@ -806,4 +808,26 @@ export const oidcCallback = async (
       )}`
     );
   }
+};
+
+export const logoutOidc = (
+  req: Request,
+  res: Response
+): void => {
+  res.clearCookie("authToken", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  });
+
+  const params = new URLSearchParams({
+    client_id: OIDC_CLIENT_ID,
+    returnTo: `${FRONTEND_URL}/auth`,
+  });
+
+  const logoutUrl =
+    `https://${OIDC_ISSUER}/v2/logout?${params.toString()}`;
+
+  res.redirect(logoutUrl);
 };
