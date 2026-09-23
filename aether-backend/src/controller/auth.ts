@@ -827,7 +827,7 @@ export const logoutOidc = (
   });
 
   const logoutUrl =
-    `${OIDC_ISSUER}/v2/logout?${params.toString()}`;
+    `${OIDC_ISSUER}v2/logout?${params.toString()}`;
 
   res.redirect(logoutUrl);
 };
