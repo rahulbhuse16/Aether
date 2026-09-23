@@ -9,6 +9,79 @@ import { NotionPage } from "../models/notion-page";
 import { extractTitle, extractIcon } from "../utils/notion";
 
 
+
+import { Client as EClient } from "@elastic/elasticsearch";
+
+export const elasticClient = new EClient({
+    node: process.env.ELASTICSEARCH_URL || "http://localhost:9200",
+});
+
+
+
+const INDEX = "notion-pages";
+
+export async function createNotionIndex() {
+    const exists = await elasticClient.indices.exists({
+        index: INDEX,
+    });
+
+    if (exists) {
+        return;
+    }
+
+    await elasticClient.indices.create({
+        index: INDEX,
+        mappings: {
+            properties: {
+                userId: {
+                    type: "keyword",
+                },
+                notionPageId: {
+                    type: "keyword",
+                },
+                workspaceId: {
+                    type: "keyword",
+                },
+                title: {
+                    type: "text",
+                },
+                content: {
+                    type: "text",
+                },
+                url: {
+                    type: "keyword",
+                },
+                lastEditedTime: {
+                    type: "date",
+                },
+            },
+        },
+    });
+
+    console.log("Elasticsearch index created:", INDEX);
+}
+
+
+export async function indexNotionPage(page: any) {
+    await elasticClient.index({
+        index: "notion-pages",
+        id: page.notionPageId,
+        document: {
+            userId: page.userId.toString(),
+            notionPageId: page.notionPageId,
+            workspaceId: page.workspaceId,
+            title: page.title,
+            content: page.content || "",
+            url: page.url,
+            lastEditedTime: page.lastEditedTime,
+        },
+    });
+}
+
+
+
+
+
 export const syncNotionToDB = async (
     userId: string,
     pageId?: string,
