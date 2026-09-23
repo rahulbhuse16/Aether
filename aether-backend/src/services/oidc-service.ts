@@ -131,6 +131,8 @@ export async function buildAuthorizationUrl(
     code_challenge: codeChallenge,
 
     code_challenge_method: "S256",
+
+    prompt: "login",
   });
 
   return `${discovery.authorization_endpoint}?${params.toString()}`;
